@@ -6,13 +6,17 @@
 
 This is more of a proof of concept for now. There is virtually no configuration
 and the polled stations are hard coded. I'm playing with different concepts and
-layouts, so expect everything to change rapidly.
+layouts, so expect everything to change rapidly. So it's not really useable yet,
+but feel free to open issues or find me on the [satnogs irc
+channel](https://satnogs.org/contact/) if you have suggestions what info about
+your station is useful to you and should be included.
 
 ## TODOs / planned features
 
 Note: the list is by no means complete or in any particular order.
 
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
+- [ ] rotator state
 - [ ] theme support
 - [ ] network overview
 - [ ] GUI
