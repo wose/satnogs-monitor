@@ -17,6 +17,7 @@ Note: the list is by no means complete or in any particular order.
 
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
 - [ ] rotator state
+- [ ] support multiple stations
 - [ ] theme support
 - [ ] network overview
 - [ ] GUI
