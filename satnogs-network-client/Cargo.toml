@@ -1,0 +1,11 @@
+[package]
+name = "satnogs-network-client"
+version = "0.1.0"
+authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
+edition = "2018"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde", "rustc-serialize"] }
+restson = "0.4.0"
+serde = "1.0"
+serde_derive = "1.0"

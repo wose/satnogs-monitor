@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "monitor",
+    "net",
+    "node",
+    "satnogs-db-client",
+    "satnogs-network-client",
+]

@@ -1,0 +1,9 @@
+[package]
+name = "gs-node"
+version = "0.1.0"
+authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
+edition = "2018"
+
+[dependencies]
+clap = "~2"
+notify = "4.0.0"

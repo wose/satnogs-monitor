@@ -1,0 +1,24 @@
+[package]
+name = "gs-control"
+version = "0.1.0"
+authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4"
+circular-queue = "0.2.0"
+config = "0.9"
+gpredict = { git = "https://github.com/wose/rust-gpredict.git" }
+libc = "0.2"
+log = { version = "0.4.5", features = ["std"] }
+read_color = "1.0.0"
+satnogs-db-client = { path = "../satnogs-db-client" }
+satnogs-network-client = { path = "../satnogs-network-client" }
+serde = "1.0.8"
+serde_derive = "1.0.8"
+signal-hook = "0.1"
+systemstat = "0.1.3"
+termion = "1.5.1"
+time = "0.1"
+tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}
+unicode-width = "0.1"
