@@ -45,7 +45,7 @@ sudo ldconfig # for linux
 
 ### Rust
 
-Use your distribution package management to install ```rustup``` if possible.
+Use your distribution package management to install `rustup` if possible.
 See [Install Rust](https://www.rust-lang.org/en-US/install.html).
 
 You'll need the *beta* or *nightly* version until Editions are in *stable*.
@@ -64,7 +64,7 @@ While other terminals will be supported in the future, the screenshot was taken
 using [alacritty](https://github.com/jwilm/alacritty) with the [Lucy
 Tewi](https://github.com/lucy/tewi-font) font.
 
-## Hacking
+## Building
 
 ```
 git clone https://github.com/wose/satnogs-monitor.git
@@ -74,3 +74,11 @@ cp examples/config.toml ~/.config/satnogs-monitor/
 edit ~/.config/satnogs-monitor/config.toml
 cargo +beta run --release
 ```
+
+## Keys
+
+Key            | Description
+---------------|------------
+`q`, `ctrl-c` | quit
+`l` | toggle log window
+
