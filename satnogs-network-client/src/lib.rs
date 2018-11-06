@@ -1,12 +1,3 @@
-//extern crate chrono;
-//extern crate restson;
-
-//#[macro_use]
-//extern crate serde_derive;
-//extern crate serde;
-
-#![feature(custom_attribute)]
-
 mod demoddata;
 mod observations;
 mod client;
