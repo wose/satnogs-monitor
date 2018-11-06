@@ -141,7 +141,7 @@ impl Ui {
     }
 
     fn next_station(&mut self) {
-        self.active_station = if self.active_station + 1 > self.stations.len() {
+        self.active_station = if self.active_station + 1 >= self.stations.len() {
             0
         } else {
             self.active_station + 1
