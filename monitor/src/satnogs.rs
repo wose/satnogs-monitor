@@ -4,13 +4,15 @@ use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
 pub enum Data {
-    Jobs(Vec<satnogs_network_client::Job>),
+    Jobs(u32, Vec<satnogs_network_client::Job>),
     Observations(satnogs_network_client::ObservationList),
+    StationInfo(u32, satnogs_network_client::Station),
 }
 
 pub enum Command {
     GetJobs(Option<i64>),
     GetObservation(Option<u32>),
+    GetStationInfo(u32),
 }
 
 pub struct Connection {
@@ -30,11 +32,19 @@ impl Connection {
                     Command::GetJobs(Some(ground_station)) => {
                         trace!("GetJobs({})", ground_station);
                         if let Ok(satnogs_network_client::JobList::Array(jobs)) = client.jobs(ground_station) {
-                            data_tx.send(Event::CommandResponse(Data::Jobs(jobs))).unwrap();
+                            data_tx.send(Event::CommandResponse(Data::Jobs(ground_station as u32, jobs))).unwrap();
                         } else {
                             data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
                         }
                     },
+                    Command::GetStationInfo(ground_station) => {
+                        trace!("GetStationInfo({})", ground_station);
+                        if let Ok(station_info) = client.station_info(ground_station) {
+                            data_tx.send(Event::CommandResponse(Data::StationInfo(ground_station, station_info))).unwrap();
+                        } else {
+                            data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
+                        }
+                    }
                     Command::GetJobs(None) => {
                         info!("GetJobs(None)");
                     }

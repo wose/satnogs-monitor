@@ -12,9 +12,11 @@ pub enum StationStatus {
 pub struct Station {
     pub active: bool,
     pub id: u32,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
     pub name: String,
-    pub status: StationStatus,
     pub observations: Vec<Observation>,
+    pub status: StationStatus,
 }
 
 impl Station {
@@ -22,6 +24,8 @@ impl Station {
         Station {
             active: false,
             id: id,
+            lat: None,
+            lng: None,
             name: name.into(),
             status: StationStatus::Offline,
             observations: vec![],

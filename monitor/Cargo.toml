@@ -8,6 +8,7 @@ edition = "2018"
 chrono = "0.4"
 circular-queue = "0.2.0"
 config = "0.9"
+directories = "1.0.2"
 gpredict = { git = "https://github.com/wose/rust-gpredict.git" }
 libc = "0.2"
 log = { version = "0.4.5", features = ["std"] }

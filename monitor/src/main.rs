@@ -5,12 +5,16 @@ mod logger;
 mod station;
 mod ui;
 mod satnogs;
+mod settings;
 mod theme;
 mod vessel;
 //mod waterfall;
 
+use self::settings::Settings;
+
 fn main() {
-    let mut tui = ui::Ui::new();
+    let settings = Settings::new().expect("Config error");
+    let mut tui = ui::Ui::new(&settings);
 
     log::set_boxed_logger(Box::new(logger::Logger::new(tui.sender())))
         .expect("Unable to create global logger");

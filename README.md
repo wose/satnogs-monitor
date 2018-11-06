@@ -4,12 +4,13 @@
 
 ## WIP
 
-This is more of a proof of concept for now. There is virtually no configuration
-and the polled stations are hard coded. I'm playing with different concepts and
-layouts, so expect everything to change rapidly. So it's not really useable yet,
-but feel free to open issues or find me on the [satnogs irc
+This is more of a proof of concept for now. I'm playing with different
+architectures and layouts, so expect everything to change rapidly. Feel free to
+open issues or find me on the [SatNOGS irc
 channel](https://satnogs.org/contact/) if you have suggestions what info about
-your station is useful to you and should be included.
+your station is useful to you and should be included. There is also a
+corresponding forum post at the [SatNOGS community
+forum](https://community.libre.space/t/satnogs-station-monitor/2802)
 
 ## TODOs / planned features
 
@@ -47,6 +48,16 @@ sudo ldconfig # for linux
 Use your distribution package management to install ```rustup``` if possible.
 See [Install Rust](https://www.rust-lang.org/en-US/install.html).
 
+You'll need the *beta* or *nightly* version until Editions are in *stable*.
+
+```
+rustup install beta
+```
+or
+```
+rustup install nightly
+```
+
 ### A true color terminal
 
 While other terminals will be supported in the future, the screenshot was taken
@@ -58,6 +69,8 @@ Tewi](https://github.com/lucy/tewi-font) font.
 ```
 git clone https://github.com/wose/satnogs-monitor.git
 cd satnogs-monitor/monitor
-cargo run --release
+mkdir ~/.config/satnogs-monitor
+cp examples/config.toml ~/.config/satnogs-monitor/
+edit ~/.config/satnogs-monitor
+cargo +beta run --release
 ```
-

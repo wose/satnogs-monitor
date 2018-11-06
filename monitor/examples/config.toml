@@ -1,0 +1,15 @@
+# satnogs-monitor example config
+
+[[stations]]
+# Your stations SatNOGS id
+satnogs_id = 175
+# This name will be displayed as title of the station tab
+name = "Rocinante"
+# The local IP address of your station
+# This will be used to get realtime information like system status, CPU temperature, ...
+# NOT USED YET
+# rt_ip = "192.168.0.13"
+# The port of the station node providing realtime information
+# NOT USED YET
+# rt_port = 8377
+

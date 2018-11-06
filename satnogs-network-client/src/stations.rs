@@ -15,8 +15,16 @@ impl RestPath<()> for StationList {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct Antenna {
+    frequency: u64,
+    frequency_max: u64,
+    band: String,
+    antenna_type: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Station {
-    pub id: i64,
+    pub id: u32,
     pub name: String,
     pub altitude: f64,
     pub min_horizon: f64,
@@ -24,7 +32,7 @@ pub struct Station {
     pub lng: f64,
     pub qthlocator: String,
     pub location: String,
-    pub antenna: Vec<String>,
+    pub antenna: Vec<Antenna>,
     pub created: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
     pub status: String,
@@ -32,8 +40,8 @@ pub struct Station {
     pub description: String,
 }
 
-impl RestPath<i64> for Station {
-    fn get_path(id: i64) -> Result<String, Error> {
+impl RestPath<u32> for Station {
+    fn get_path(id: u32) -> Result<String, Error> {
         Ok(format!("/api/stations/{}/", id))
     }
 }
