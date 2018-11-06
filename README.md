@@ -71,6 +71,6 @@ git clone https://github.com/wose/satnogs-monitor.git
 cd satnogs-monitor/monitor
 mkdir ~/.config/satnogs-monitor
 cp examples/config.toml ~/.config/satnogs-monitor/
-edit ~/.config/satnogs-monitor
+edit ~/.config/satnogs-monitor/config.toml
 cargo +beta run --release
 ```
