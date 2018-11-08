@@ -1,5 +1,9 @@
 # satnogs-monitor example config
 
+# log level 0 -> WARN, 1 -> INFO, 2 -> DEBUG, 3 -> TRACE
+log_level = 1
+
+
 [[stations]]
 # Your stations SatNOGS id
 satnogs_id = 175

@@ -5,7 +5,7 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum StationList {
-    Array(Vec<Station>),
+    Array(Vec<StationInfo>),
 }
 
 impl RestPath<()> for StationList {
@@ -16,31 +16,48 @@ impl RestPath<()> for StationList {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Antenna {
+    /// minimum frequency
     frequency: u64,
+    /// maximum frequency
     frequency_max: u64,
+    /// frequency band
     band: String,
+    /// antenna type
     antenna_type: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Station {
+pub struct StationInfo {
+    /// station id
     pub id: u32,
+    /// station name
     pub name: String,
+    /// station positionaltitude
     pub altitude: f64,
+    /// minimum horizon
     pub min_horizon: f64,
+    /// station position latitude
     pub lat: f64,
+    /// station position longitude
     pub lng: f64,
+    /// QTH locator
     pub qthlocator: String,
     pub location: String,
+    /// antennas
     pub antenna: Vec<Antenna>,
+    /// date and time the station was created
     pub created: DateTime<Utc>,
+    /// date and time the station was last seen by the network
     pub last_seen: DateTime<Utc>,
+    /// current station status ["Online", "Offline", "Testing"]
     pub status: String,
+    /// number of observations
     pub observations: u64,
+    /// station description provided by the operator
     pub description: String,
 }
 
-impl RestPath<u32> for Station {
+impl RestPath<u32> for StationInfo {
     fn get_path(id: u32) -> Result<String, Error> {
         Ok(format!("/api/stations/{}/", id))
     }

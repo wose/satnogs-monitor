@@ -24,6 +24,8 @@ use crate::settings::Settings;
 use crate::station::{Station, StationStatus};
 use crate::vessel::Vessel;
 
+use crate::Result;
+
 //const COL_DARK_BG: Color = Color::Rgb(0x10, 0x10, 0x10);
 const COL_LIGHT_BG: Color = Color::Rgb(0x77, 0x77, 0x77);
 const COL_CYAN: Color = Color::Rgb(0x0C, 0x7C, 0x73);

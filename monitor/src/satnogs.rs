@@ -1,12 +1,13 @@
 use crate::event::Event;
 use log::{error, info, trace, warn};
+use satnogs_network_client::{Job, ObservationList, StationInfo};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
 pub enum Data {
-    Jobs(u32, Vec<satnogs_network_client::Job>),
-    Observations(satnogs_network_client::ObservationList),
-    StationInfo(u32, satnogs_network_client::Station),
+    Jobs(u32, Vec<Job>),
+    Observations(ObservationList),
+    StationInfo(u32, StationInfo),
 }
 
 pub enum Command {
@@ -16,9 +17,7 @@ pub enum Command {
 }
 
 pub struct Connection {
-//    client: satnogs_network_client::Client,
     command_tx: SyncSender<Command>,
-//    data: SyncSender<Data>,
 }
 
 impl Connection {
@@ -63,9 +62,7 @@ impl Connection {
 
 
         Self {
-        //    client: satnogs_network_client::Client::new("https://network.satnogs.org/api/").unwrap(),
             command_tx: command_tx,
-        //    data: data_tx,
         }
     }
 

@@ -1,6 +1,5 @@
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use serde;
 use serde_derive::Deserialize;
 use std::path::Path;
 
@@ -14,6 +13,7 @@ pub struct StationConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
+    pub log_level: Option<u64>,
     pub stations: Vec<StationConfig>,
 }
 

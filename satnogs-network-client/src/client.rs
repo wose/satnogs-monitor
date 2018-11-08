@@ -6,7 +6,7 @@ use restson::{RestClient, Error};
 //use stations::*;
 
 use crate::{JobList, Job, ObservationList, ObservationFilter};
-use crate::Station;
+use crate::{StationList, StationInfo};
 
 pub struct Client {
     api_key: Option<String>,
@@ -48,7 +48,11 @@ impl Client {
         self.client.get_with((), &filter)
     }
 
-    pub fn station_info(&mut self, station_id: u32) -> Result<Station, Error> {
+    pub fn stations(&mut self) -> Result<StationList, Error> {
+        self.client.get(())
+    }
+
+    pub fn station_info(&mut self, station_id: u32) -> Result<StationInfo, Error> {
         self.client.get(station_id)
     }
 }
