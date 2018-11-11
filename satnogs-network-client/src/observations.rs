@@ -22,7 +22,7 @@ impl<'a> ObservationFilter {
         }
     }
 
-    pub fn ground_station(mut self, id: i64) -> Self {
+    pub fn ground_station(mut self, id: u64) -> Self {
         self.ground_station = format!("{}", id);
         self
     }
@@ -37,7 +37,7 @@ impl<'a> ObservationFilter {
         self
     }
 
-    pub fn norad_cat_id(mut self, id: i64) -> Self {
+    pub fn norad_cat_id(mut self, id: u64) -> Self {
         self.norad_cat_id = format!("{}", id);
         self
     }
@@ -79,12 +79,12 @@ impl RestPath<()> for ObservationList {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Observation {
-    pub id: i64,
+    pub id: u64,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
-    pub ground_station: i64,
+    pub ground_station: u64,
     pub transmitter: String,
-    pub norad_cat_id: i64,
+    pub norad_cat_id: u64,
     pub payload: Option<String>,
     pub waterfall: Option<String>,
     pub demoddata: Vec<DemodData>,
@@ -93,14 +93,17 @@ pub struct Observation {
     pub station_lng: f64,
     pub station_alt: f64,
     pub vetted_status: String,
+    pub rise_azimuth: f64,
+    pub set_azimuth: f64,
+    pub max_altitude: f64,
     pub archived: bool,
     pub archive_url: Option<String>,
     pub client_version: String,
     pub client_metadata: String,
 }
 
-impl RestPath<i64> for Observation {
-    fn get_path(id: i64) -> Result<String, Error> {
+impl RestPath<u64> for Observation {
+    fn get_path(id: u64) -> Result<String, Error> {
         Ok(format!("/api/observations/{}/", id))
     }
 }

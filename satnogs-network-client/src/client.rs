@@ -1,15 +1,9 @@
 use restson::{RestClient, Error};
 
-//use demoddata::DemodData;
-//use jobs::*;
-//use observations::*;
-//use stations::*;
-
-use crate::{JobList, Job, ObservationList, ObservationFilter};
+use crate::{JobList, Observation, ObservationList, ObservationFilter};
 use crate::{StationList, StationInfo};
 
 pub struct Client {
-    api_key: Option<String>,
     client: RestClient,
 }
 
@@ -18,7 +12,6 @@ impl Client {
         let client = RestClient::new(url)?;
         Ok(
             Client {
-                api_key: None,
                 client: client,
             }
         )
@@ -29,12 +22,11 @@ impl Client {
         client.set_header("Authorization", &format!("Token {}", api_key))?;
         Ok(
             Client {
-                api_key: Some(api_key.into()),
                 client: client,
             })
     }
 
-    pub fn jobs(&mut self, ground_station: i64) -> Result<JobList, Error> {
+    pub fn jobs(&mut self, ground_station: u64) -> Result<JobList, Error> {
         self.client.get_with((), &[("ground_station", &format!("{}", ground_station))])
     }
 
@@ -48,11 +40,15 @@ impl Client {
         self.client.get_with((), &filter)
     }
 
+    pub fn observation(&mut self, id: u64) -> Result<Observation, Error> {
+        self.client.get(id)
+    }
+
     pub fn stations(&mut self) -> Result<StationList, Error> {
         self.client.get(())
     }
 
-    pub fn station_info(&mut self, station_id: u32) -> Result<StationInfo, Error> {
+    pub fn station_info(&mut self, station_id: u64) -> Result<StationInfo, Error> {
         self.client.get(station_id)
     }
 }

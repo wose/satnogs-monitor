@@ -1,75 +1,61 @@
-use log::info;
-use satnogs_network_client::{Observation, ObservationList};
+use chrono::{Duration, Utc};
+use satnogs_network_client as snc;
 use std::fmt;
 
-#[derive(Copy, Clone)]
-pub enum StationStatus {
-    Idle,
-    Observing,
-    Offline,
-}
+use crate::job::Job;
 
 pub struct Station {
-    pub active: bool,
-    pub id: u32,
-    pub lat: Option<f64>,
-    pub lng: Option<f64>,
-    pub name: String,
-    pub observations: Vec<Observation>,
-    pub status: StationStatus,
+    pub info: snc::StationInfo,
+    pub jobs: Vec<Job>,
 }
 
 impl Station {
-    pub fn new(id: u32, name: &str) -> Self {
+    pub fn new(info: snc::StationInfo) -> Self {
         Station {
-            active: false,
-            id: id,
-            lat: None,
-            lng: None,
-            name: name.into(),
-            status: StationStatus::Offline,
-            observations: vec![],
+            info: info,
+            jobs: vec![],
         }
     }
 
-    pub fn id(&self) -> u32 {
-        self.id
+    pub fn id(&self) -> u64 {
+        self.info.id
     }
 
     pub fn name(&self) -> &str {
-        &self.name
+        &self.info.name
     }
 
-    pub fn status(&self) -> StationStatus {
-        self.status
+    pub fn remove_finished_jobs(&mut self) {
+        self.jobs.retain(|job|
+                         job.end() - Utc::now() > Duration::zero()
+        );
     }
 
-    pub fn set_status(&mut self, status: StationStatus) {
-        self.status = status;
-    }
-
-    pub fn update_observations(&mut self, observations: &[Observation]) {
-        for obs in observations {
-            match self
-                .observations
-                .iter_mut()
-                .find(|ref observation| { observation.id == obs.id })
-            {
-                Some(mut observation) => {
-                    info!("Update Observation {} on station {} ({})", obs.id, self.name, self.id);
-                    observation = &mut obs.clone()
-                },
-                None => {
-                    info!("New observation {} on station {} ({})", obs.id, self.name, self.id);
-                    self.observations.push(obs.clone())
-                },
+    pub fn update_jobs(&mut self, jobs: Vec<(snc::Job, snc::Observation)>) {
+        for job in jobs {
+            if self.jobs.iter().find(|j| j.id() == job.0.id).is_none() {
+                self.jobs.push(Job::new(job, self.location()));
             }
+        }
+        self.jobs.sort_unstable_by_key(|job| job.start());
+
+        if let Some(job) = self.jobs.iter_mut().next() {
+            job.update_position();
+            job.update_ground_track();
+        }
+    }
+
+    pub fn location(&self) -> gpredict::Location {
+        gpredict::Location {
+            lat_deg: self.info.lat,
+            lon_deg: self.info.lng,
+            alt_m: self.info.altitude,
         }
     }
 }
 
 impl fmt::Display for Station {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} - {}", self.id, self.name)
+        write!(f, "{} - {}", self.id(), self.name())
     }
 }

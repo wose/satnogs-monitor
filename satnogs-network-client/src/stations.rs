@@ -27,12 +27,20 @@ pub struct Antenna {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+//#[serde(tag = "status")]
+pub enum StationStatus {
+    Online,
+    Offline,
+    Testing,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct StationInfo {
     /// station id
-    pub id: u32,
+    pub id: u64,
     /// station name
     pub name: String,
-    /// station positionaltitude
+    /// station position altitude
     pub altitude: f64,
     /// minimum horizon
     pub min_horizon: f64,
@@ -50,15 +58,15 @@ pub struct StationInfo {
     /// date and time the station was last seen by the network
     pub last_seen: DateTime<Utc>,
     /// current station status ["Online", "Offline", "Testing"]
-    pub status: String,
+    pub status: StationStatus,
     /// number of observations
     pub observations: u64,
     /// station description provided by the operator
     pub description: String,
 }
 
-impl RestPath<u32> for StationInfo {
-    fn get_path(id: u32) -> Result<String, Error> {
+impl RestPath<u64> for StationInfo {
+    fn get_path(id: u64) -> Result<String, Error> {
         Ok(format!("/api/stations/{}/", id))
     }
 }

@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
 use log::{debug, info, trace, warn};
+use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
 use termion::screen::AlternateScreen;
@@ -21,14 +22,14 @@ use std::thread;
 use crate::event::Event;
 use crate::satnogs;
 use crate::settings::Settings;
-use crate::station::{Station, StationStatus};
-use crate::vessel::Vessel;
-
-use crate::Result;
+use crate::state::State;
+use crate::station::Station;
 
 //const COL_DARK_BG: Color = Color::Rgb(0x10, 0x10, 0x10);
-const COL_LIGHT_BG: Color = Color::Rgb(0x77, 0x77, 0x77);
+//const COL_LIGHT_BG: Color = Color::Rgb(0x77, 0x77, 0x77);
+const COL_LIGHT_BG: Color = Color::DarkGray;
 const COL_CYAN: Color = Color::Rgb(0x0C, 0x7C, 0x73);
+//const COL_CYAN: Color = Color::Cyan;
 const COL_DARK_CYAN: Color = Color::Rgb(0x09, 0x35, 0x33);
 /*
 const COL_LIGHT_CYAN: Color = Color::Rgb(0x04, 0xF1, 0xF1);
@@ -37,14 +38,14 @@ const COL_LIGHT_GREEN: Color = Color::Rgb(0x32, 0x4D, 0x38);
 const COL_DARK_RED: Color = Color::Rgb(0x39, 0x08, 0x0C);
 const COL_LIGHT_RED: Color = Color::Rgb(0x77, 0x06, 0x0C);
 */
-const COL_WHITE: Color = Color::Rgb(0xFA, 0xFA, 0xFA);
+//const COL_WHITE: Color = Color::Rgb(0xFA, 0xFA, 0xFA);
+const COL_WHITE: Color = Color::White;
 
 type Backend = TermionBackend<AlternateScreen<MouseTerminal<RawTerminal<io::Stdout>>>>;
 
 pub struct Ui {
-    active_station: usize,
+    active_station: u64,
     events: Receiver<Event>,
-    jobs: Vec<satnogs_network_client::Job>,
     logs: CircularQueue<(DateTime<Utc>, log::Level, String)>,
     last_job_update: std::time::Instant,
     network: satnogs::Connection,
@@ -52,14 +53,13 @@ pub struct Ui {
     show_logs: bool,
     shutdown: bool,
     size: Rect,
-    stations: Vec<Station>,
+    state: State,
     terminal: Terminal<Backend>,
     ticks: u32,
-    vessels: Vec<Vessel>,
 }
 
 impl Ui {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &Settings, client: Client, state: State) -> Self {
         let (sender, reciever) = sync_channel(100);
 
         // Must be called before any threads are launched
@@ -99,26 +99,9 @@ impl Ui {
         terminal.clear().unwrap();
         terminal.hide_cursor().unwrap();
 
-        let stations: Vec<_> = settings
-            .stations
-            .iter()
-            .map(|sc|
-                Station {
-                active: true,
-                id: sc.satnogs_id,
-                lat: None,
-                lng: None,
-                name: sc.name.to_string(),
-                observations: vec![],
-                    status: StationStatus::Idle,
-                }
-            )
-            .collect();
-
-        let mut ui = Self {
-            active_station: 0,
+        let ui = Self {
+            active_station: 175,
             events: reciever,
-            jobs: vec![],
             last_job_update: std::time::Instant::now(),
             logs: CircularQueue::with_capacity(100),
             network: satnogs::Connection::new(sender.clone()),
@@ -126,15 +109,11 @@ impl Ui {
             show_logs: false,
             shutdown: false,
             size: Rect::default(),
-            stations: stations,
+            state: state,
             terminal: terminal,
             ticks: 0,
-            vessels: vec![],
         };
 
-        for station in &ui.stations {
-            ui.network.send(satnogs::Command::GetStationInfo(station.id)).unwrap();
-        }
         ui
     }
 
@@ -143,30 +122,57 @@ impl Ui {
     }
 
     fn next_station(&mut self) {
-        self.active_station = if self.active_station + 1 >= self.stations.len() {
-            0
-        } else {
-            self.active_station + 1
+        if self.state.stations.len() > 1 {
+            self.active_station = *self
+                .state
+                .stations
+                .keys()
+                .skip_while(|id| **id != self.active_station)
+                .skip(1)
+                .next()
+                .unwrap_or(self.state.stations.keys().next().unwrap());
         }
     }
 
     fn prev_station(&mut self) {
-        self.active_station = if self.active_station == 0 {
-            self.stations.len()
-        } else {
-            self.active_station - 1
+        if self.state.stations.len() > 1 {
+            self.active_station = *self
+                .state
+                .stations
+                .keys()
+                .rev()
+                .skip_while(|id| **id != self.active_station)
+                .skip(1)
+                .next()
+                .unwrap_or(self.state.stations.keys().rev().next().unwrap());
         }
     }
 
     fn update_vessel_position(&mut self) {
-        for vessel in &mut self.vessels {
-            vessel.update_position();
+        if let Some(job) = self
+            .state
+            .stations
+            .get_mut(&self.active_station)
+            .unwrap()
+            .jobs
+            .iter_mut()
+            .next()
+        {
+            job.update_position();
         }
     }
 
     pub fn update_ground_tracks(&mut self) {
-        for vessel in &mut self.vessels {
-            vessel.update_ground_track();
+        if let Some(job) = self
+            .state
+            .stations
+            .get_mut(&self.active_station)
+            .unwrap()
+            .jobs
+            .iter_mut()
+            .next()
+        {
+            job.update_ground_track();
         }
     }
 
@@ -210,8 +216,8 @@ impl Ui {
             Style::default().fg(COL_WHITE).bg(COL_DARK_CYAN),
         ));
         tabs.push(Text::raw("         "));
-        for station in &self.stations {
-            format_station(&station, 1, &mut tabs);
+        for (_, station) in &self.state.stations {
+            self.format_station(&station, 1, &mut tabs);
             tabs.push(Text::raw("   "));
         }
 
@@ -220,17 +226,16 @@ impl Ui {
         tabs.push(Text::raw("   "));
         tabs.push(Text::styled(decal, Style::default().fg(COL_DARK_CYAN)));
         tabs.push(Text::raw("         "));
-        for station in &self.stations {
-            format_station(&station, 2, &mut tabs);
+        for (_, station) in &self.state.stations {
+            self.format_station(&station, 2, &mut tabs);
             tabs.push(Text::raw("   "));
         }
 
         let utc: DateTime<Utc> = Utc::now();
-        let jobs = &self.jobs;
-        let vessels = &self.vessels;
+        let jobs = &self.state.stations.get(&self.active_station).unwrap().jobs;
         let logs = &self.logs;
         let show_logs = self.show_logs;
-        let station = self.stations.get(self.active_station);
+        let station = self.state.stations.get(&self.active_station);
 
         self.terminal
             .draw(|mut f| {
@@ -267,10 +272,15 @@ impl Ui {
                 // - station status
                 // - current observation info
 
+                let station_status = match station.unwrap().info.status {
+                    StationStatus::Online => "ONLINE",
+                    StationStatus::Offline => "OFFLINE",
+                    StationStatus::Testing => "TESTING",
+                };
                 let mut station_info = vec![
                     Text::styled("Station Status\n\n", Style::default().fg(Color::Yellow)),
                     Text::styled("Observation  ", Style::default().fg(Color::Cyan)),
-                    Text::styled("               IDLE\n", Style::default().fg(Color::Yellow)),
+                    Text::styled(format!("{:>19}\n", station_status), Style::default().fg(Color::Yellow)),
                     Text::styled("CPU          ", Style::default().fg(Color::Cyan)),
                     Text::styled("                 11", Style::default().fg(COL_WHITE)),
                     Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
@@ -286,9 +296,15 @@ impl Ui {
                     Text::raw("\n"),
                 ];
 
-                let mut jobs_rev = jobs.iter().rev();
+                let mut jobs_rev = jobs.iter();
                 if let Some(job) = jobs_rev.next() {
-                    let delta_t = Utc::now() - job.start;
+                    let delta_t = Utc::now() - job.start();
+                    let time_style = if delta_t >= time::Duration::zero() {
+                        Style::default().fg(Color::Green)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
+
                     station_info.extend_from_slice(&[
                         Text::styled("Next Job", Style::default().fg(Color::Yellow)),
                         Text::styled(
@@ -297,36 +313,60 @@ impl Ui {
                                 delta_t.num_minutes(),
                                 (delta_t.num_seconds() % 60).abs()
                             ),
-                            Style::default().fg(Color::DarkGray),
+                            time_style,
                         ),
                         Text::styled("ID           ", Style::default().fg(Color::Cyan)),
-                        Text::styled(format!("{:>19}\n", job.id), Style::default().fg(COL_WHITE)),
+                        Text::styled(
+                            format!("{:>19}\n", job.id()),
+                            Style::default().fg(COL_WHITE),
+                        ),
                         Text::styled("Vessel       ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:>19}\n", job.tle0),
+                            format!("{:>19}\n", job.vessel_name()),
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled("Start        ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:>19}\n", job.start.format("%Y-%m-%d %H:%M:%S")),
+                            format!("{:>19}\n", job.start().format("%Y-%m-%d %H:%M:%S")),
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled("End          ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:>19}\n", job.end.format("%Y-%m-%d %H:%M:%S")),
+                            format!("{:>19}\n", job.end().format("%Y-%m-%d %H:%M:%S")),
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled("Mode         ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:>19}\n", job.mode),
+                            format!("{:>19}\n", job.mode()),
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled("Frequency    ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:19.3}", job.frequency as f64 / 1_000_000.0),
+                            format!("{:19.3}", job.frequency_mhz()),
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled(" Mhz\n\n", Style::default().fg(Color::LightGreen)),
+
+                        Text::styled("Rise         ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:19.3}",job.observation.rise_azimuth),
+                            Style::default().fg(COL_WHITE)
+                        ),
+                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+
+                        Text::styled("Max          ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:19.3}",job.observation.max_altitude),
+                            Style::default().fg(COL_WHITE)
+                        ),
+                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+
+                        Text::styled("Set          ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:19.3}",job.observation.set_azimuth),
+                            Style::default().fg(COL_WHITE)
+                        ),
+                        Text::styled(" °\n\n", Style::default().fg(Color::LightGreen)),
                     ]);
                 } else {
                     station_info.push(Text::styled(
@@ -334,6 +374,61 @@ impl Ui {
                         Style::default().fg(Color::Yellow),
                     ));
                     station_info.push(Text::styled("None\n\n", Style::default().fg(Color::Red)));
+                }
+
+                station_info.push(Text::styled(
+                    "Satellite\n\n",
+                    Style::default().fg(Color::Yellow),
+                ));
+
+                if jobs.is_empty() {
+                    station_info.push(Text::styled("None\n\n", Style::default().fg(Color::Red)));
+                } else {
+                    let job = jobs.iter().next().unwrap();
+                    station_info.extend_from_slice(&[
+                        Text::styled("Orbit        ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19}", job.sat().orbit_nr),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled("\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Latitude     ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().lat_deg),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Longitude    ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().lon_deg),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Altitude     ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().alt_km),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Velocity     ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().vel_km_s),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Range        ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().range_km),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
+                        Text::styled("Range Rate   ", Style::default().fg(Color::Cyan)),
+                        Text::styled(
+                            format!("{:>19.3}", job.sat().range_rate_km_sec),
+                            Style::default().fg(COL_WHITE),
+                        ),
+                        Text::styled(" km/s\n\n", Style::default().fg(Color::LightGreen)),
+                    ]);
                 }
 
                 station_info.push(Text::styled(
@@ -346,14 +441,14 @@ impl Ui {
                 } else {
                     let mut jobs_rev = jobs_rev.take(5);
                     while let Some(job) = jobs_rev.next() {
-                        let delta_t = Utc::now() - job.start;
+                        let delta_t = Utc::now() - job.start();
                         station_info.extend_from_slice(&[
                             Text::styled(
-                                format!("#{:<7}─┬", job.id),
+                                format!("#{:<7}─┬", job.id()),
                                 Style::default().fg(Color::Cyan),
                             ),
                             Text::styled(
-                                format!("{:>26}", job.tle0),
+                                format!("{:>26}", job.vessel_name()),
                                 Style::default().fg(Color::Yellow),
                             ),
                             Text::styled("┐\n", Style::default().fg(Color::Cyan)),
@@ -367,100 +462,17 @@ impl Ui {
                             ),
                             Text::styled(" └", Style::default().fg(Color::Cyan)),
                             Text::styled(
-                                format!("{:>8} ", job.mode),
+                                format!("{:>8} ", job.mode()),
                                 Style::default().fg(COL_WHITE),
                             ),
                             Text::styled(
-                                format!("{:13.3}", job.frequency as f64 / 1_000_000.0),
+                                format!("{:13.3}", job.frequency_mhz()),
                                 Style::default().fg(COL_WHITE),
                             ),
                             Text::styled(" Mhz", Style::default().fg(Color::LightGreen)),
                             Text::styled("┘\n", Style::default().fg(Color::Cyan)),
                         ]);
                     }
-                }
-
-                station_info.extend_from_slice(&[
-                    Text::styled("\n\nObservation\n\n", Style::default().fg(Color::Yellow)),
-                    Text::styled("ID           ", Style::default().fg(Color::Cyan)),
-                    Text::styled("            #309482", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Satellite    ", Style::default().fg(Color::Cyan)),
-                    Text::styled("          25544 ISS", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Observer     ", Style::default().fg(Color::Cyan)),
-                    Text::styled("               wose", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Start        ", Style::default().fg(Color::Cyan)),
-                    Text::styled("2018-11-02 02:13:41", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("End          ", Style::default().fg(Color::Cyan)),
-                    Text::styled("2018-11-02 02:23:10", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Transmitter  ", Style::default().fg(Color::Cyan)),
-                    Text::styled("  Mode U/V FM Voice", Style::default().fg(COL_WHITE)),
-                    Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Frequency    ", Style::default().fg(Color::Cyan)),
-                    Text::styled("            145.800", Style::default().fg(COL_WHITE)),
-                    Text::styled(" MHz\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Rise         ", Style::default().fg(Color::Cyan)),
-                    Text::styled("              199.0", Style::default().fg(COL_WHITE)),
-                    Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Max          ", Style::default().fg(Color::Cyan)),
-                    Text::styled("               14.0", Style::default().fg(COL_WHITE)),
-                    Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("Set          ", Style::default().fg(Color::Cyan)),
-                    Text::styled("               79.0", Style::default().fg(COL_WHITE)),
-                    Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("\n\nSatellite\n\n", Style::default().fg(Color::Yellow)),
-                ]);
-                if vessels.is_empty() {
-                    station_info.push(Text::styled("None\n\n", Style::default().fg(Color::Red)));
-                } else {
-                    station_info.extend_from_slice(&[
-                        Text::styled("Orbit    ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19}", vessels[0].sat().orbit_nr),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled("\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Latitude     ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().lat_deg),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Longitude    ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().lon_deg),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Altitude     ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().alt_km),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Velocity     ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().vel_km_s),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Range        ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().range_km),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
-                        Text::styled("Range Rate   ", Style::default().fg(Color::Cyan)),
-                        Text::styled(
-                            format!("{:>19.3}", vessels[0].sat().range_rate_km_sec),
-                            Style::default().fg(COL_WHITE),
-                        ),
-                        Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
-                    ]);
                 }
 
                 Paragraph::new(station_info.iter())
@@ -481,19 +493,20 @@ impl Ui {
                             resolution: MapResolution::High,
                         });
                         if let Some(station) = station {
-                            if let (Some(lat), Some(lng)) = (station.lat, station.lng) {
-                                ctx.print(lng, lat, DOT, Color::LightCyan);
-                            }
+                            ctx.print(station.info.lng, station.info.lat, DOT, Color::LightCyan);
                         }
-                        for vessel in vessels {
-                            let marker = format!("■─{}", vessel.name());
-                            ctx.print(vessel.sat().lon_deg,
-                                      vessel.sat().lat_deg,
+
+
+
+                        if let Some(job) = jobs.iter().next() {
+                            let marker = format!("■─{}", job.vessel_name());
+                            ctx.print(job.sat().lon_deg,
+                                      job.sat().lat_deg,
                                       marker,
                                       Color::LightRed);
                             let mut ground_track = Points::default();
                             ground_track.color = Color::Yellow;
-                            ground_track.coords = &vessel.ground_track;
+                            ground_track.coords = &job.vessel.ground_track;
                             ctx.layer();
                             ctx.draw(&ground_track);
                         }
@@ -553,10 +566,11 @@ impl Ui {
             Key(Ctrl('c')) => self.shutdown = true,
             Key(Char('l')) => self.show_logs = !self.show_logs,
             Key(Char('\t')) => self.next_station(),
+            Key(Ctrl('\t')) => self.prev_station(),
             Key(Char('q')) => self.shutdown = true,
             Key(key) => {
-                debug!("Key Event: {:?}", key);
-            },
+                warn!("Key Event: {:?}", key);
+            }
             _ => {}
         }
     }
@@ -565,31 +579,21 @@ impl Ui {
         match event {
             Event::CommandResponse(data) => match data {
                 satnogs::Data::Jobs(station_id, jobs) => {
-                    if station_id == self.stations[self.active_station].id {
-                        info!("Got {} jobs for station {}", jobs.len(), station_id);
-                        self.vessels.clear();
-                        if let Some(job) = jobs.iter().rev().next() {
-                            self.vessels.clear();
-                            self.vessels
-                                .push(Vessel::new(&job.tle0, &job.tle1, &job.tle2));
-                            self.update_ground_tracks();
-                            self.update_vessel_position();
-                        }
-                    }
-                    self.jobs = jobs;
+                    self.state
+                        .stations
+                        .entry(station_id)
+                        .and_modify(|station| station.update_jobs(jobs));
                 }
                 satnogs::Data::Observations(_) => info!("Got observations update"),
                 satnogs::Data::StationInfo(station_id, info) => {
                     info!("Got info for station {}", station_id);
-                    if let Some(station) = self.stations.iter_mut().find(|station| station.id == station_id) {
-                        station.lat = Some(info.lat);
-                        station.lng = Some(info.lng);
-                    }
+                    self.state
+                        .stations
+                        .entry(station_id)
+                        .and_modify(|station| station.info = info);
                 }
             },
-            Event::Resize => {
-                debug!("Terminal size changed")
-            }
+            Event::Resize => debug!("Terminal size changed"),
             Event::Input(event) => {
                 self.handle_input(&event);
             }
@@ -617,6 +621,9 @@ impl Ui {
         }
 
         if self.ticks % 60 == 0 {
+            for job in self.state.stations.values_mut() {
+                job.remove_finished_jobs();
+            }
             self.update_ground_tracks();
         }
     }
@@ -624,10 +631,8 @@ impl Ui {
     fn update_jobs(&mut self) {
         trace!("Requesting jobs update");
 
-        for station in &self.stations {
-            self.network
-                .send(satnogs::Command::GetJobs(Some(station.id as i64)))
-                .unwrap();
+        for (id, _) in &self.state.stations {
+            self.network.send(satnogs::Command::GetJobs(*id)).unwrap();
         }
         self.last_job_update = std::time::Instant::now();
     }
@@ -664,49 +669,50 @@ impl Ui {
             }
         }
     }
-}
 
-fn format_station(station: &Station, line: u32, data: &mut Vec<Text>) {
-    let bg = if station.active {
-        COL_CYAN
-    } else {
-        COL_DARK_CYAN
-    };
+    fn format_station(&self, station: &Station, line: u32, data: &mut Vec<Text>) {
+        let bg = if self.active_station == station.info.id {
+            COL_CYAN
+        } else {
+            COL_DARK_CYAN
+        };
 
-    match line {
-        1 => {
-            let status = match station.status {
-                StationStatus::Idle => {
-                    Text::styled("▲", Style::default().fg(Color::Yellow).bg(bg))
-                }
-                StationStatus::Observing => {
-                    Text::styled("▲", Style::default().fg(Color::LightGreen).bg(bg))
-                }
-                StationStatus::Offline => {
-                    Text::styled("▲", Style::default().fg(Color::LightRed).bg(bg))
-                }
-            };
+        match line {
+            1 => {
+                let status = match station.info.status {
+                    StationStatus::Testing => {
+                        Text::styled("▲", Style::default().fg(Color::Yellow).bg(bg))
+                    }
+                    StationStatus::Online => {
+                        Text::styled("▲", Style::default().fg(Color::LightGreen).bg(bg))
+                    }
+                    StationStatus::Offline => {
+                        Text::styled("▲", Style::default().fg(Color::LightRed).bg(bg))
+                    }
+                };
 
-            data.extend_from_slice(&[
-                Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
-                status,
-                //            Text::styled("▲", Style::default().fg(COL_LIGHT_GREEN).bg(COL_DARK_CYAN)),
-                Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
-                Text::styled(
-                    format!(" {} ", station),
-                    Style::default().fg(COL_WHITE).bg(bg),
-                ),
-            ]);
+                data.extend_from_slice(&[
+                    Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
+                    status,
+                    //            Text::styled("▲", Style::default().fg(COL_LIGHT_GREEN).bg(COL_DARK_CYAN)),
+                    Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
+                    Text::styled(
+                        format!(" {} - {} ", station.info.id, station.info.name),
+                        Style::default().fg(COL_WHITE).bg(bg),
+                    ),
+                ]);
+            }
+            2 => {
+                let decal = (0..UnicodeWidthStr::width(
+                    format!(" {} - {} ", station.info.id, station.info.name).as_str(),
+                )).map(|_| "▀")
+                    .collect::<String>();
+                data.extend_from_slice(&[
+                    Text::raw("   "),
+                    Text::styled(decal, Style::default().fg(bg)),
+                ]);
+            }
+            _ => (),
         }
-        2 => {
-            let decal = (0..UnicodeWidthStr::width(format!(" {} ", station).as_str()))
-                .map(|_| "▀")
-                .collect::<String>();
-            data.extend_from_slice(&[
-                Text::raw("   "),
-                Text::styled(decal, Style::default().fg(bg)),
-            ]);
-        }
-        _ => (),
     }
 }

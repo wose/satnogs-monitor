@@ -10,17 +10,11 @@ pub struct Vessel {
 }
 
 impl Vessel {
-    pub fn new(name: &str, tle1: &str, tle2: &str) -> Self {
+    pub fn new(id: u64, name: &str, tle1: &str, tle2: &str, qth: Location) -> Self {
         let tle = Tle {
             name: name.to_string(),
             line1: tle1.to_string(),
             line2: tle2.to_string(),
-        };
-
-        let qth = Location {
-            lat_deg: 50.826,
-            lon_deg: 12.940,
-            alt_m: 322.0,
         };
 
         let mut predict = Predict::new(&tle, &qth);
@@ -28,7 +22,7 @@ impl Vessel {
 
         Vessel {
             ground_track: vec![],
-            id: 12345,
+            id,
             sat: predict.sat,
             tle: tle,
             qth: qth,
@@ -52,17 +46,14 @@ impl Vessel {
     pub fn update_ground_track(&mut self) {
         // get the current orbit number and go back in time to the start of the orbit
         // then go forward in time until the next orbit (or orgbit numbers)
-        // start a new points vector if we hit the +-180deg
         let mut predict = Predict::new(&self.tle, &self.qth);
         predict.update(None);
 
-        predict.update(None);
         let mut current_orbit = self.sat.orbit_nr;
         let this_orbit = current_orbit;
         let mut time = time::now_utc();
 
         while current_orbit == this_orbit {
-            //            let time = time::now_utc().sub(time::Duration::minutes(minutes));
             time = time - time::Duration::seconds(15);
             predict.update(Some(time));
             current_orbit = predict.sat.orbit_nr;
@@ -71,7 +62,6 @@ impl Vessel {
         current_orbit = this_orbit;
         self.ground_track.clear();
         while current_orbit == this_orbit {
-            //let time = time::utc_now().sub(time::Duration::minutes(minutes));
             time = time + time::Duration::seconds(15);
             predict.update(Some(time));
             self.ground_track

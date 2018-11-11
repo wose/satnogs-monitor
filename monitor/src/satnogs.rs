@@ -1,19 +1,19 @@
 use crate::event::Event;
 use log::{error, info, trace, warn};
-use satnogs_network_client::{Job, ObservationList, StationInfo};
+use satnogs_network_client::{Job, Observation, ObservationList, StationInfo};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
 pub enum Data {
-    Jobs(u32, Vec<Job>),
+    Jobs(u64, Vec<(Job, Observation)>),
     Observations(ObservationList),
-    StationInfo(u32, StationInfo),
+    StationInfo(u64, StationInfo),
 }
 
 pub enum Command {
-    GetJobs(Option<i64>),
+    GetJobs(u64),
     GetObservation(Option<u32>),
-    GetStationInfo(u32),
+    GetStationInfo(u64),
 }
 
 pub struct Connection {
@@ -28,14 +28,6 @@ impl Connection {
 
             while let Ok(command) = command_rx.recv() {
                 match command {
-                    Command::GetJobs(Some(ground_station)) => {
-                        trace!("GetJobs({})", ground_station);
-                        if let Ok(satnogs_network_client::JobList::Array(jobs)) = client.jobs(ground_station) {
-                            data_tx.send(Event::CommandResponse(Data::Jobs(ground_station as u32, jobs))).unwrap();
-                        } else {
-                            data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
-                        }
-                    },
                     Command::GetStationInfo(ground_station) => {
                         trace!("GetStationInfo({})", ground_station);
                         if let Ok(station_info) = client.station_info(ground_station) {
@@ -44,8 +36,22 @@ impl Connection {
                             data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
                         }
                     }
-                    Command::GetJobs(None) => {
-                        info!("GetJobs(None)");
+                    Command::GetJobs(id) => {
+                        if let Ok(satnogs_network_client::JobList::Array(jobs)) = client.jobs(id) {
+                            let mut jobs_obs = vec![];
+                            for job in jobs {
+                                if let Ok(observation) = client.observation(job.id) {
+                                    warn!("Got some jobs");
+                                    jobs_obs.push((job, observation));
+                                } else {
+                                    warn!("No observation for job {} on station {}", job.id, id);
+                                }
+                            }
+
+                            data_tx.send(Event::CommandResponse(Data::Jobs(id, jobs_obs))).unwrap();
+                        } else {
+                            error!("Couldn't get jobs for station {}", id);
+                        }
                     }
                     Command::GetObservation(Some(id)) => {
                         info!("GetObservation({})", id);

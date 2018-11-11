@@ -16,10 +16,10 @@ impl RestPath<()> for JobList {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Job {
-    pub id: i64,
+    pub id: u64,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
-    pub ground_station: i64,
+    pub ground_station: u64,
     pub tle0: String,
     pub tle1: String,
     pub tle2: String,
@@ -29,8 +29,8 @@ pub struct Job {
     pub baud: Option<f64>,
 }
 
-impl RestPath<i64> for Job {
-    fn get_path(id: i64) -> Result<String, Error> {
+impl RestPath<u64> for Job {
+    fn get_path(id: u64) -> Result<String, Error> {
         Ok(format!("/api/jobs/{}/", id))
     }
 }
