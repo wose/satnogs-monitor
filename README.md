@@ -16,9 +16,14 @@ forum](https://community.libre.space/t/satnogs-station-monitor/2802)
 
 Note: the list is by no means complete or in any particular order.
 
+- [ ] reduce API queries
+- [ ] calculate ground tracks only when a new orbit begins
+- [ ] polar plot
+- [ ] detect supported colors and change palette accordingly
+- [ ] build debian package for the RPi SatNOGS image
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
 - [ ] rotator state
-- [ ] support multiple stations
+- [X] support multiple stations
 - [ ] theme support
 - [ ] network overview
 - [ ] GUI
@@ -75,10 +80,19 @@ edit ~/.config/satnogs-monitor/config.toml
 cargo +beta run --release
 ```
 
+The config file is optional, you can also provide stations with the `-s`
+parameter. At least one station has to be provided by either a config file or
+the command line.
+
+```
+cargo +beta run --release -- -s 175 -s 227
+```
+
 ## Keys
 
 Key            | Description
 ---------------|------------
-`q`, `ctrl-c` | quit
 `l` | toggle log window
+`\t` | next station
+`q`, `ctrl-c` | quit
 
