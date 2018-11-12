@@ -1,5 +1,5 @@
 use clap::{crate_authors, crate_version, values_t, App, Arg};
-use failure;
+use failure::Fail;
 use log;
 use satnogs_network_client::Client;
 use std::process;
@@ -20,6 +20,11 @@ use self::settings::{Settings, StationConfig};
 use self::station::Station;
 
 type Result<T> = std::result::Result<T, failure::Error>;
+
+#[derive(Debug, Fail)]
+#[fail(display = "No station provided")]
+struct NoStationError;
+
 
 fn main() {
     if let Err(err) = run() {
@@ -121,6 +126,10 @@ fn settings() -> Result<Settings> {
         for id in ids {
             settings.stations.push(StationConfig::new(id));
         }
+    }
+
+    if settings.stations.is_empty() {
+        return Err(NoStationError.into());
     }
 
     // only one entry per station

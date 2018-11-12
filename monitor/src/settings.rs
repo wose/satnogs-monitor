@@ -29,6 +29,9 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
+        settings.set_default("log_level", 0)?;
+        settings.set_default("stations", Vec::<config::Value>::new())?;
+
         if let Some(project_dirs) = ProjectDirs::from("org", "SatNOGS", "satnogs-monitor") {
             let file = File::with_name(
                 project_dirs
@@ -37,7 +40,7 @@ impl Settings {
                     .to_str()
                     .ok_or(ConfigError::Message("Invalid project dir".to_string()))?
             );
-            settings.merge(file)?;
+            settings.merge(file.required(false))?;
         }
 
         settings.try_into()
