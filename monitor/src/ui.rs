@@ -41,7 +41,8 @@ const COL_LIGHT_RED: Color = Color::Rgb(0x77, 0x06, 0x0C);
 //const COL_WHITE: Color = Color::Rgb(0xFA, 0xFA, 0xFA);
 const COL_WHITE: Color = Color::White;
 
-type Backend = TermionBackend<AlternateScreen<MouseTerminal<RawTerminal<io::Stdout>>>>;
+//type Backend = TermionBackend<AlternateScreen<MouseTerminal<RawTerminal<io::Stdout>>>>;
+type Backend = TermionBackend<MouseTerminal<RawTerminal<io::Stdout>>>;
 
 pub struct Ui {
     active_station: u64,
@@ -92,7 +93,7 @@ impl Ui {
             .into_raw_mode()
             .expect("Failted to put stdout into raw mode");
         let stdout = MouseTerminal::from(stdout);
-        let stdout = AlternateScreen::from(stdout);
+//        let stdout = AlternateScreen::from(stdout);
         let backend = TermionBackend::new(stdout);
         let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
 
