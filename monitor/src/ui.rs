@@ -100,8 +100,10 @@ impl Ui {
         terminal.clear().unwrap();
         terminal.hide_cursor().unwrap();
 
+        let first_station = *state.stations.keys().next().unwrap_or(&0);
+
         let ui = Self {
-            active_station: 175,
+            active_station: first_station,
             events: reciever,
             last_job_update: std::time::Instant::now(),
             logs: CircularQueue::with_capacity(100),
@@ -150,30 +152,26 @@ impl Ui {
     }
 
     fn update_vessel_position(&mut self) {
-        if let Some(job) = self
-            .state
-            .stations
-            .get_mut(&self.active_station)
-            .unwrap()
-            .jobs
-            .iter_mut()
-            .next()
-        {
-            job.update_position();
+        if let Some(station) = self.state.stations.get_mut(&self.active_station) {
+            if let Some(job) = station
+                .jobs
+                .iter_mut()
+                .next()
+            {
+                job.update_position();
+            }
         }
     }
 
     pub fn update_ground_tracks(&mut self) {
-        if let Some(job) = self
-            .state
-            .stations
-            .get_mut(&self.active_station)
-            .unwrap()
-            .jobs
-            .iter_mut()
-            .next()
-        {
-            job.update_ground_track();
+        if let Some(station) = self.state.stations.get_mut(&self.active_station) {
+            if let Some(job) = station
+                .jobs
+                .iter_mut()
+                .next()
+            {
+                job.update_ground_track();
+            }
         }
     }
 
@@ -233,10 +231,14 @@ impl Ui {
         }
 
         let utc: DateTime<Utc> = Utc::now();
-        let jobs = &self.state.stations.get(&self.active_station).unwrap().jobs;
+        let station = self.state.stations.get(&self.active_station);
+        //        let jobs = &self.state.stations.get(&self.active_station).unwrap().jobs;
+        let mut jobs = &vec![];
+        if let Some(station) = station {
+            jobs = &station.jobs;
+        }
         let logs = &self.logs;
         let show_logs = self.show_logs;
-        let station = self.state.stations.get(&self.active_station);
 
         self.terminal
             .draw(|mut f| {
