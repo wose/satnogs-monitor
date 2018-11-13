@@ -41,7 +41,6 @@ impl Connection {
                             let mut jobs_obs = vec![];
                             for job in jobs {
                                 if let Ok(observation) = client.observation(job.id) {
-                                    warn!("Got some jobs");
                                     jobs_obs.push((job, observation));
                                 } else {
                                     warn!("No observation for job {} on station {}", job.id, id);

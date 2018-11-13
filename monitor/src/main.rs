@@ -52,14 +52,12 @@ fn run() -> Result<()> {
         );
     }
 
-    let mut tui = ui::Ui::new(&settings, client, state);
+    let mut tui = ui::Ui::new(&settings, client, state)?;
 
     log::set_boxed_logger(Box::new(logger::Logger::new(tui.sender())))?;
 
     tui.update_ground_tracks();
-    tui.run();
-
-    Ok(())
+    tui.run()
 }
 
 fn format_error(err: &failure::Error) -> String {

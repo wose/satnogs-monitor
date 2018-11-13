@@ -18,10 +18,12 @@ Note: the list is by no means complete or in any particular order.
 
 - [ ] reduce API queries
 - [ ] calculate ground tracks only when a new orbit begins
+- [ ] show satellite footprint (can be toggled)
 - [ ] polar plot
+- [ ] refactor station info, obs info, etc. into separate widgets
 - [ ] detect supported colors and change palette accordingly
 - [X] build debian package for the RPi SatNOGS image
-  Check [releases](https://github.com/wose/satnogs-monitor/releases)
+  - Check [releases](https://github.com/wose/satnogs-monitor/releases)
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
 - [ ] rotator state
 - [X] support multiple stations

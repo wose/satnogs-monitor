@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
+use failure::ResultExt;
 use log::{debug, info, trace, warn};
 use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};
@@ -24,6 +25,8 @@ use crate::satnogs;
 use crate::settings::Settings;
 use crate::state::State;
 use crate::station::Station;
+
+use crate::Result;
 
 //const COL_DARK_BG: Color = Color::Rgb(0x10, 0x10, 0x10);
 //const COL_LIGHT_BG: Color = Color::Rgb(0x77, 0x77, 0x77);
@@ -60,13 +63,13 @@ pub struct Ui {
 }
 
 impl Ui {
-    pub fn new(settings: &Settings, client: Client, state: State) -> Self {
+    pub fn new(settings: &Settings, client: Client, state: State) -> Result<Self> {
         let (sender, reciever) = sync_channel(100);
 
         // Must be called before any threads are launched
         let winch_send = sender.clone();
         let signals = ::signal_hook::iterator::Signals::new(&[::libc::SIGWINCH])
-            .expect("Couldn't register resize signal handler");
+            .context("couldn't register resize signal handler")?;
         thread::spawn(move || {
             for _ in &signals {
                 let _ = winch_send.send(Event::Resize);
@@ -91,14 +94,14 @@ impl Ui {
 
         let stdout = io::stdout()
             .into_raw_mode()
-            .expect("Failted to put stdout into raw mode");
+            .context("failted to put stdout into raw mode")?;
         let stdout = MouseTerminal::from(stdout);
-//        let stdout = AlternateScreen::from(stdout);
+        //        let stdout = AlternateScreen::from(stdout);
         let backend = TermionBackend::new(stdout);
-        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+        let mut terminal = Terminal::new(backend).context("failed to create terminal")?;
 
-        terminal.clear().unwrap();
-        terminal.hide_cursor().unwrap();
+        terminal.clear().context("failed to clear terminal")?;
+        terminal.hide_cursor().context("failed to hide cursor")?;
 
         let first_station = *state.stations.keys().next().unwrap_or(&0);
 
@@ -117,7 +120,7 @@ impl Ui {
             ticks: 0,
         };
 
-        ui
+        Ok(ui)
     }
 
     pub fn sender(&self) -> SyncSender<Event> {
@@ -133,6 +136,7 @@ impl Ui {
                 .skip_while(|id| **id != self.active_station)
                 .skip(1)
                 .next()
+                // this is safe because we checked that stations has at least 2 elements
                 .unwrap_or(self.state.stations.keys().next().unwrap());
         }
     }
@@ -147,17 +151,14 @@ impl Ui {
                 .skip_while(|id| **id != self.active_station)
                 .skip(1)
                 .next()
+                // this is safe because we checked that stations has at least 2 elements
                 .unwrap_or(self.state.stations.keys().rev().next().unwrap());
         }
     }
 
     fn update_vessel_position(&mut self) {
         if let Some(station) = self.state.stations.get_mut(&self.active_station) {
-            if let Some(job) = station
-                .jobs
-                .iter_mut()
-                .next()
-            {
+            if let Some(job) = station.jobs.iter_mut().next() {
                 job.update_position();
             }
         }
@@ -165,22 +166,18 @@ impl Ui {
 
     pub fn update_ground_tracks(&mut self) {
         if let Some(station) = self.state.stations.get_mut(&self.active_station) {
-            if let Some(job) = station
-                .jobs
-                .iter_mut()
-                .next()
-            {
+            if let Some(job) = station.jobs.iter_mut().next() {
                 job.update_ground_track();
             }
         }
     }
 
-    fn draw(&mut self) {
-        let size = self.terminal.size().expect("Failed to get terminal size");
+    fn draw(&mut self) -> Result<()> {
+        let size = self.terminal.size().context("Failed to get terminal size")?;
         if self.size != size {
             self.terminal
                 .resize(size)
-                .expect("Failed to resize terminal");
+                .context("Failed to resize terminal")?;
             self.size = size;
         }
 
@@ -232,7 +229,6 @@ impl Ui {
 
         let utc: DateTime<Utc> = Utc::now();
         let station = self.state.stations.get(&self.active_station);
-        //        let jobs = &self.state.stations.get(&self.active_station).unwrap().jobs;
         let mut jobs = &vec![];
         if let Some(station) = station {
             jobs = &station.jobs;
@@ -283,7 +279,10 @@ impl Ui {
                 let mut station_info = vec![
                     Text::styled("Station Status\n\n", Style::default().fg(Color::Yellow)),
                     Text::styled("Observation  ", Style::default().fg(Color::Cyan)),
-                    Text::styled(format!("{:>19}\n", station_status), Style::default().fg(Color::Yellow)),
+                    Text::styled(
+                        format!("{:>19}\n", station_status),
+                        Style::default().fg(Color::Yellow),
+                    ),
                     Text::styled("CPU          ", Style::default().fg(Color::Cyan)),
                     Text::styled("                 11", Style::default().fg(COL_WHITE)),
                     Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
@@ -349,25 +348,22 @@ impl Ui {
                             Style::default().fg(COL_WHITE),
                         ),
                         Text::styled(" Mhz\n\n", Style::default().fg(Color::LightGreen)),
-
                         Text::styled("Rise         ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:19.3}",job.observation.rise_azimuth),
-                            Style::default().fg(COL_WHITE)
+                            format!("{:19.3}", job.observation.rise_azimuth),
+                            Style::default().fg(COL_WHITE),
                         ),
                         Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-
                         Text::styled("Max          ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:19.3}",job.observation.max_altitude),
-                            Style::default().fg(COL_WHITE)
+                            format!("{:19.3}", job.observation.max_altitude),
+                            Style::default().fg(COL_WHITE),
                         ),
                         Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-
                         Text::styled("Set          ", Style::default().fg(Color::Cyan)),
                         Text::styled(
-                            format!("{:19.3}",job.observation.set_azimuth),
-                            Style::default().fg(COL_WHITE)
+                            format!("{:19.3}", job.observation.set_azimuth),
+                            Style::default().fg(COL_WHITE),
                         ),
                         Text::styled(" °\n\n", Style::default().fg(Color::LightGreen)),
                     ]);
@@ -499,8 +495,6 @@ impl Ui {
                             ctx.print(station.info.lng, station.info.lat, DOT, Color::LightCyan);
                         }
 
-
-
                         if let Some(job) = jobs.iter().next() {
                             let marker = format!("■─{}", job.vessel_name());
                             ctx.print(job.sat().lon_deg,
@@ -517,7 +511,6 @@ impl Ui {
                     .x_bounds([-180.0, 180.0])
                     .y_bounds([-90.0, 90.0])
                     .render(&mut f, body[1]);
-                //.render(&mut f, obs_rt_info[1]);
 
                 if show_logs {
                     Paragraph::new(
@@ -557,7 +550,9 @@ impl Ui {
                         .render(&mut f, log_area);
                 }
             })
-            .expect("Failed to draw to terminal");
+            .context("Failed to draw to terminal")?;
+
+        Ok(())
     }
 
     fn handle_input(&mut self, event: &::termion::event::Event) {
@@ -640,11 +635,11 @@ impl Ui {
         self.last_job_update = std::time::Instant::now();
     }
 
-    pub fn run(mut self) {
+    pub fn run(mut self) -> Result<()> {
         use std::time::{Duration, Instant};
 
         self.update_jobs();
-        self.draw();
+        self.draw()?;
 
         while let Ok(event) = self.events.recv() {
             self.handle_event(event);
@@ -665,12 +660,14 @@ impl Ui {
                 self.handle_event(event);
             }
 
-            self.draw();
+            self.draw()?;
 
             if self.shutdown {
                 break;
             }
         }
+
+        Ok(())
     }
 
     fn format_station(&self, station: &Station, line: u32, data: &mut Vec<Text>) {
