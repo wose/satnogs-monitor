@@ -20,7 +20,8 @@ Note: the list is by no means complete or in any particular order.
 - [ ] calculate ground tracks only when a new orbit begins
 - [ ] polar plot
 - [ ] detect supported colors and change palette accordingly
-- [ ] build debian package for the RPi SatNOGS image
+- [X] build debian package for the RPi SatNOGS image
+  Check [releases](https://github.com/wose/satnogs-monitor/releases)
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
 - [ ] rotator state
 - [X] support multiple stations
@@ -68,6 +69,9 @@ rustup install nightly
 While other terminals will be supported in the future, the screenshot was taken
 using [alacritty](https://github.com/jwilm/alacritty) with the [Lucy
 Tewi](https://github.com/lucy/tewi-font) font.
+
+Check [the wiki](https://github.com/wose/satnogs-monitor/wiki) for infos on
+other terminals with and without Xorg.
 
 ## Building
 
