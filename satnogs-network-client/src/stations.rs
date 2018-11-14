@@ -56,7 +56,7 @@ pub struct StationInfo {
     /// date and time the station was created
     pub created: DateTime<Utc>,
     /// date and time the station was last seen by the network
-    pub last_seen: DateTime<Utc>,
+    pub last_seen: Option<DateTime<Utc>>,
     /// current station status ["Online", "Offline", "Testing"]
     pub status: StationStatus,
     /// number of observations
