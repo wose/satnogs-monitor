@@ -15,20 +15,15 @@ impl Logger {
 }
 
 impl Log for Logger {
-    fn enabled(&self, _metadata: &Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.target().starts_with("satnogs")
     }
 
     fn log(&self, record: &Record) {
-        let _message = format!(
-            "{}, {}, {}",
-            record.args(),
-            record.file().unwrap_or("?"),
-            record.line().unwrap_or(0)
-        );
-
-        let messgae = format!("{}", record.args());
-        let _ = self.sender.send(Event::Log((record.level(), messgae)));
+        if self.enabled(record.metadata()) {
+            let messgae = format!("{}", record.args());
+            let _ = self.sender.send(Event::Log((record.level(), messgae)));
+        }
     }
 
     fn flush(&self) {
