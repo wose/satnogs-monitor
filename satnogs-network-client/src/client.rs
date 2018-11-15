@@ -35,7 +35,14 @@ impl Client {
             let page = format!("{}", page);
             filter.push(("page", &page));
             match self.client.get_with((), &filter) {
-                Ok(ObservationList::Array(ref obs)) => observations.extend_from_slice(obs),
+                Ok(ObservationList::Array(ref obs)) => {
+                    observations.extend_from_slice(obs);
+                    // check if we are surely on the last page
+                    if obs.len() < 25 {
+                        break
+                    }
+
+                },
                 Err(Error::HttpError(404, _)) => break,
                 Err(e) => return Err(e),
             }
