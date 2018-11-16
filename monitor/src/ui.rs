@@ -5,7 +5,7 @@ use log::{debug, info, trace, warn};
 use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
-use termion::screen::AlternateScreen;
+//use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Style};
@@ -31,11 +31,12 @@ use crate::Result;
 //const COL_DARK_BG: Color = Color::Rgb(0x10, 0x10, 0x10);
 //const COL_LIGHT_BG: Color = Color::Rgb(0x77, 0x77, 0x77);
 const COL_LIGHT_BG: Color = Color::DarkGray;
-const COL_CYAN: Color = Color::Rgb(0x0C, 0x7C, 0x73);
-//const COL_CYAN: Color = Color::Cyan;
-const COL_DARK_CYAN: Color = Color::Rgb(0x09, 0x35, 0x33);
+//const COL_CYAN: Color = Color::Rgb(0x0C, 0x7C, 0x73);
+const COL_CYAN: Color = Color::LightCyan;
+//const COL_DARK_CYAN: Color = Color::Rgb(0x09, 0x35, 0x33);
+const COL_DARK_CYAN: Color = Color::DarkGray;
 /*
-const COL_LIGHT_CYAN: Color = Color::Rgb(0x04, 0xF1, 0xF1);
+onst COL_LIGHT_CYAN: Color = Color::Rgb(0x04, 0xF1, 0xF1);
 const COL_DARK_GREEN: Color = Color::Rgb(0x14, 0x22, 0x1A);
 const COL_LIGHT_GREEN: Color = Color::Rgb(0x32, 0x4D, 0x38);
 const COL_DARK_RED: Color = Color::Rgb(0x39, 0x08, 0x0C);
@@ -63,7 +64,7 @@ pub struct Ui {
 }
 
 impl Ui {
-    pub fn new(settings: &Settings, client: Client, state: State) -> Result<Self> {
+    pub fn new(_settings: &Settings, _client: Client, state: State) -> Result<Self> {
         let (sender, reciever) = sync_channel(100);
 
         // Must be called before any threads are launched
@@ -204,10 +205,6 @@ impl Ui {
 
         let mut tabs = vec![];
         tabs.push(Text::styled(
-            "🛰  ",
-            Style::default().fg(COL_WHITE).bg(COL_DARK_CYAN),
-        ));
-        tabs.push(Text::styled(
             " NETWORK ",
             Style::default().fg(COL_WHITE).bg(COL_DARK_CYAN),
         ));
@@ -219,7 +216,6 @@ impl Ui {
 
         let decal = (0..9).map(|_| "▀").collect::<String>();
         tabs.push(Text::raw("\n"));
-        tabs.push(Text::raw("   "));
         tabs.push(Text::styled(decal, Style::default().fg(COL_DARK_CYAN)));
         tabs.push(Text::raw("         "));
         for (_, station) in &self.state.stations {
@@ -245,12 +241,12 @@ impl Ui {
                     .render(&mut f, header[0]);
 
                 // UTC clock
-                let decal = (0..25).map(|_| "▀").collect::<String>();
+                let decal = (0..24).map(|_| "▀").collect::<String>();
 
                 Paragraph::new(
                     [
                         Text::styled(
-                            utc.format("    %F").to_string(),
+                            utc.format(" %F").to_string(),
                             Style::default().fg(COL_WHITE).bg(COL_DARK_CYAN),
                         ),
                         Text::styled(
@@ -261,10 +257,10 @@ impl Ui {
                             utc.format("%T").to_string(),
                             Style::default().fg(COL_WHITE).bg(COL_DARK_CYAN),
                         ),
-                        Text::raw("\n   "),
+                        Text::raw("\n"),
                         Text::styled(decal, Style::default().fg(COL_DARK_CYAN)),
                     ].into_iter(),
-                ).alignment(Alignment::Left)
+                ).alignment(Alignment::Right)
                     .render(&mut f, header[1]);
 
                 // left bar
@@ -671,30 +667,24 @@ impl Ui {
     }
 
     fn format_station(&self, station: &Station, line: u32, data: &mut Vec<Text>) {
-        let bg = if self.active_station == station.info.id {
+        let active_bg = if self.active_station == station.info.id {
             COL_CYAN
         } else {
             COL_DARK_CYAN
         };
+        let bg = COL_DARK_CYAN;
+
+        let status_fg = match station.info.status {
+            StationStatus::Testing => Color::Yellow,
+            StationStatus::Online => Color::LightGreen,
+            StationStatus::Offline => Color::LightRed,
+        };
 
         match line {
             1 => {
-                let status = match station.info.status {
-                    StationStatus::Testing => {
-                        Text::styled("▲", Style::default().fg(Color::Yellow).bg(bg))
-                    }
-                    StationStatus::Online => {
-                        Text::styled("▲", Style::default().fg(Color::LightGreen).bg(bg))
-                    }
-                    StationStatus::Offline => {
-                        Text::styled("▲", Style::default().fg(Color::LightRed).bg(bg))
-                    }
-                };
-
                 data.extend_from_slice(&[
                     Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
-                    status,
-                    //            Text::styled("▲", Style::default().fg(COL_LIGHT_GREEN).bg(COL_DARK_CYAN)),
+                    Text::styled("▲", Style::default().fg(status_fg).bg(bg)),
                     Text::styled(" ", Style::default().fg(COL_WHITE).bg(bg)),
                     Text::styled(
                         format!(" {} - {} ", station.info.id, station.info.name),
@@ -708,8 +698,8 @@ impl Ui {
                 )).map(|_| "▀")
                     .collect::<String>();
                 data.extend_from_slice(&[
-                    Text::raw("   "),
-                    Text::styled(decal, Style::default().fg(bg)),
+                    Text::styled("▀▀▀", Style::default().fg(status_fg)),
+                    Text::styled(decal, Style::default().fg(active_bg)),
                 ]);
             }
             _ => (),
