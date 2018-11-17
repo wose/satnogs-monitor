@@ -16,7 +16,7 @@ forum](https://community.libre.space/t/satnogs-station-monitor/2802)
 
 Note: the list is by no means complete or in any particular order.
 
-- [ ] reduce API queries
+- [X] reduce API queries
 - [ ] calculate ground tracks only when a new orbit begins
 - [ ] show satellite footprint (can be toggled)
 - [ ] polar plot

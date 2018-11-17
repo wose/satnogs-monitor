@@ -1,6 +1,7 @@
+use chrono::Utc;
 use crate::event::Event;
-use log::{error, info, trace, warn};
-use satnogs_network_client::{Job, Observation, ObservationList, StationInfo};
+use log::{debug, error, info, trace, warn};
+use satnogs_network_client::{Job, Observation, ObservationFilter, ObservationList, StationInfo};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
@@ -24,47 +25,73 @@ impl Connection {
     pub fn new(data_tx: SyncSender<Event>) -> Self {
         let (command_tx, command_rx) = sync_channel(100);
         thread::spawn(move || {
-            let mut client = satnogs_network_client::Client::new("https://network.satnogs.org/api/").unwrap();
+            let mut client =
+                satnogs_network_client::Client::new("https://network.satnogs.org/api/").unwrap();
 
             while let Ok(command) = command_rx.recv() {
                 match command {
-                    Command::GetStationInfo(ground_station) => {
-                        trace!("GetStationInfo({})", ground_station);
-                        if let Ok(station_info) = client.station_info(ground_station) {
-                            data_tx.send(Event::CommandResponse(Data::StationInfo(ground_station, station_info))).unwrap();
+                    Command::GetStationInfo(id) => {
+                        trace!("GetStationInfo({})", id);
+                        if let Ok(station_info) = client.station_info(id) {
+                            data_tx
+                                .send(Event::CommandResponse(Data::StationInfo(id, station_info)))
+                                .unwrap();
                         } else {
                             data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
                         }
                     }
                     Command::GetJobs(id) => {
-                        if let Ok(satnogs_network_client::JobList::Array(jobs)) = client.jobs(id) {
-                            let mut jobs_obs = vec![];
-                            for job in jobs {
-                                if let Ok(observation) = client.observation(job.id) {
-                                    jobs_obs.push((job, observation));
-                                } else {
-                                    warn!("No observation for job {} on station {}", job.id, id);
-                                }
-                            }
-
-                            data_tx.send(Event::CommandResponse(Data::Jobs(id, jobs_obs))).unwrap();
+                        if let Ok(observations) = client.observations(
+                            &ObservationFilter::new()
+                                .start(Utc::now())
+                                .ground_station(id),
+                        ) {
+                            client
+                                .jobs(id)
+                                .and_then(|jobs| {
+                                    let jobs = jobs
+                                        .into_iter()
+                                        .filter_map(|job| {
+                                            if let Some(obs) = observations
+                                                .iter()
+                                                .find(|observation| observation.id == job.id)
+                                            {
+                                                trace!("Got all infos for job {}", job.id);
+                                                Some((job, obs.clone()))
+                                            } else {
+                                                debug!("No observation for job {} found", job.id);
+                                                None
+                                            }
+                                        })
+                                        .collect::<Vec<_>>();
+                                    Ok(jobs)
+                                })
+                                .and_then(|jobs| {
+                                    data_tx
+                                        .send(Event::CommandResponse(Data::Jobs(id, jobs)))
+                                        .unwrap_or_else(|e| {
+                                            error!("Failed to send Data::Job response: {}", e)
+                                        });
+                                    Ok(())
+                                })
+                                .unwrap_or_else(|e| {
+                                    error!("Failed to map jobs to observations: {}", e)
+                                });
                         } else {
-                            error!("Couldn't get jobs for station {}", id);
+                            error!("Failed to get observations for station {}", id);
                         }
                     }
                     Command::GetObservation(Some(id)) => {
                         info!("GetObservation({})", id);
-                    },
+                    }
                     Command::GetObservation(None) => {
                         info!("GetObservation(None)");
-                    },
+                    }
                 }
             }
 
             warn!("Command channel closed");
         });
-
-
 
         Self {
             command_tx: command_tx,

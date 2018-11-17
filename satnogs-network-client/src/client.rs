@@ -1,6 +1,6 @@
 use restson::{Error, RestClient};
 
-use crate::{JobList, Observation, ObservationFilter, ObservationList};
+use crate::{Job, JobList, Observation, ObservationFilter, ObservationList};
 use crate::{StationInfo, StationList};
 
 pub struct Client {
@@ -19,9 +19,9 @@ impl Client {
         Ok(Client { client: client })
     }
 
-    pub fn jobs(&mut self, id: u64) -> Result<JobList, Error> {
-        self.client
-            .get_with((), &[("ground_station", &format!("{}", id))])
+    pub fn jobs(&mut self, id: u64) -> Result<Vec<Job>, Error> {
+        self.client.get_with((), &[("ground_station", &format!("{}", id))])
+            .and_then(|JobList::Array(jobs)| Ok(jobs))
     }
 
     pub fn observations(&mut self, filter: &ObservationFilter) -> Result<Vec<Observation>, Error> {
