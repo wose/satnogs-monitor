@@ -49,12 +49,12 @@ impl Job {
         &self.job.mode
     }
 
-    pub fn update_position(&mut self) {
-        self.vessel.update_position();
+    pub fn update_position(&mut self, orbits: u8) {
+        self.vessel.update_position(orbits);
     }
 
-    pub fn update_ground_track(&mut self) {
-        self.vessel.update_ground_track();
+    pub fn update_ground_track(&mut self, orbits: u8) {
+        self.vessel.update_ground_track(orbits);
     }
 
     pub fn sat(&self) -> &Sat {

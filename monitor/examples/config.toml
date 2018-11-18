@@ -7,8 +7,6 @@ log_level = 1
 [[stations]]
 # Your stations SatNOGS id
 satnogs_id = 175
-# This name will be displayed as title of the station tab
-name = "Rocinante"
 # The local IP address of your station
 # This will be used to get realtime information like system status, CPU temperature, ...
 # NOT USED YET
@@ -17,3 +15,6 @@ name = "Rocinante"
 # NOT USED YET
 # rt_port = 8377
 
+[ui]
+# number of orbits plotted on the map
+ground_track_num = 3

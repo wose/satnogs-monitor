@@ -37,13 +37,17 @@ impl Vessel {
         &self.sat
     }
 
-    pub fn update_position(&mut self) {
+    pub fn update_position(&mut self, orbits: u8) {
         let mut predict = Predict::new(&self.tle, &self.qth);
         predict.update(None);
+        let update_ground_track = self.sat.orbit_nr != predict.sat.orbit_nr || self.ground_track.is_empty();
         self.sat = predict.sat;
+        if update_ground_track {
+            self.update_ground_track(orbits);
+        }
     }
 
-    pub fn update_ground_track(&mut self) {
+    pub fn update_ground_track(&mut self, orbits: u8) {
         // get the current orbit number and go back in time to the start of the orbit
         // then go forward in time until the next orbit (or orgbit numbers)
         let mut predict = Predict::new(&self.tle, &self.qth);
@@ -61,7 +65,7 @@ impl Vessel {
 
         current_orbit = this_orbit;
         self.ground_track.clear();
-        while current_orbit == this_orbit {
+        while current_orbit < this_orbit + orbits as u64 {
             time = time + time::Duration::seconds(15);
             predict.update(Some(time));
             self.ground_track

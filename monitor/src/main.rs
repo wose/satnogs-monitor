@@ -1,4 +1,4 @@
-use clap::{crate_authors, crate_version, values_t, App, Arg};
+use clap::{crate_authors, crate_version, value_t, values_t, App, Arg};
 use failure::Fail;
 use log;
 use satnogs_network_client::Client;
@@ -52,7 +52,7 @@ fn run() -> Result<()> {
         );
     }
 
-    let mut tui = ui::Ui::new(&settings, client, state)?;
+    let mut tui = ui::Ui::new(settings, client, state)?;
 
     log::set_boxed_logger(Box::new(logger::Logger::new(tui.sender())))?;
 
@@ -84,6 +84,14 @@ fn settings() -> Result<Settings> {
                 .help("Sets custom config file")
                 .value_name("FILE")
                 .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("orbits")
+                .short("o")
+                .long("orbits")
+                .help("Sets the number of orbits plotted on the map")
+                .value_name("NUM")
+                .takes_value(true)
         )
         .arg(
             Arg::with_name("station")
@@ -133,6 +141,10 @@ fn settings() -> Result<Settings> {
     // only one entry per station
     settings.stations.sort_unstable_by_key(|sc| sc.satnogs_id);
     settings.stations.dedup_by_key(|sc| sc.satnogs_id);
+
+    if let Ok(orbits) = value_t!(matches.value_of("orbits"), u8) {
+        settings.ui.ground_track_num = std::cmp::max(1, orbits);
+    }
 
     Ok(settings)
 }

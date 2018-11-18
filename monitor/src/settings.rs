@@ -21,8 +21,22 @@ impl StationConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct UiConfig {
+    pub ground_track_num: u8,
+}
+
+impl UiConfig {
+    pub fn new() -> Self {
+        UiConfig {
+            ground_track_num: 3,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Settings {
     pub log_level: Option<u64>,
+    pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
 }
 
@@ -30,6 +44,7 @@ impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
         settings.set_default("log_level", 0)?;
+        settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;
 
         if let Some(project_dirs) = ProjectDirs::from("org", "SatNOGS", "satnogs-monitor") {

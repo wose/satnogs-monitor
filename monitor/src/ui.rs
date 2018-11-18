@@ -55,6 +55,7 @@ pub struct Ui {
     last_job_update: std::time::Instant,
     network: satnogs::Connection,
     sender: SyncSender<Event>,
+    settings: Settings,
     show_logs: bool,
     shutdown: bool,
     size: Rect,
@@ -64,7 +65,7 @@ pub struct Ui {
 }
 
 impl Ui {
-    pub fn new(_settings: &Settings, _client: Client, state: State) -> Result<Self> {
+    pub fn new(settings: Settings, _client: Client, state: State) -> Result<Self> {
         let (sender, reciever) = sync_channel(100);
 
         // Must be called before any threads are launched
@@ -95,7 +96,7 @@ impl Ui {
 
         let stdout = io::stdout()
             .into_raw_mode()
-            .context("failted to put stdout into raw mode")?;
+            .context("failed to put stdout into raw mode")?;
         let stdout = MouseTerminal::from(stdout);
         //        let stdout = AlternateScreen::from(stdout);
         let backend = TermionBackend::new(stdout);
@@ -113,6 +114,7 @@ impl Ui {
             logs: CircularQueue::with_capacity(100),
             network: satnogs::Connection::new(sender.clone()),
             sender: sender,
+            settings,
             show_logs: false,
             shutdown: false,
             size: Rect::default(),
@@ -160,7 +162,7 @@ impl Ui {
     fn update_vessel_position(&mut self) {
         if let Some(station) = self.state.stations.get_mut(&self.active_station) {
             if let Some(job) = station.jobs.iter_mut().next() {
-                job.update_position();
+                job.update_position(self.settings.ui.ground_track_num);
             }
         }
     }
@@ -168,7 +170,7 @@ impl Ui {
     pub fn update_ground_tracks(&mut self) {
         if let Some(station) = self.state.stations.get_mut(&self.active_station) {
             if let Some(job) = station.jobs.iter_mut().next() {
-                job.update_ground_track();
+                job.update_ground_track(self.settings.ui.ground_track_num);
             }
         }
     }
@@ -231,6 +233,7 @@ impl Ui {
         }
         let logs = &self.logs;
         let show_logs = self.show_logs;
+        let ground_track_num = self.settings.ui.ground_track_num as usize;
 
         self.terminal
             .draw(|mut f| {
@@ -497,10 +500,16 @@ impl Ui {
                                       job.sat().lat_deg,
                                       marker,
                                       Color::LightRed);
-                            let mut ground_track = Points::default();
-                            ground_track.color = Color::Yellow;
-                            ground_track.coords = &job.vessel.ground_track;
                             ctx.layer();
+                            let mut ground_track = Points::default();
+                            // plot future orbits first so the current orbit will be drawn on top
+                            ground_track.color = Color::Cyan;;
+                            ground_track.coords = &job.vessel.ground_track[job.vessel.ground_track.len() / ground_track_num..];
+                            ctx.draw(&ground_track);
+
+                            ctx.layer();
+                            ground_track.color = Color::Yellow;
+                            ground_track.coords = &job.vessel.ground_track[..job.vessel.ground_track.len() / ground_track_num];
                             ctx.draw(&ground_track);
                         }
                     })
@@ -577,6 +586,7 @@ impl Ui {
                         .stations
                         .entry(station_id)
                         .and_modify(|station| station.update_jobs(jobs));
+                    self.update_vessel_position();
                 }
                 satnogs::Data::Observations(_) => info!("Got observations update"),
                 satnogs::Data::StationInfo(station_id, info) => {
@@ -618,7 +628,6 @@ impl Ui {
             for job in self.state.stations.values_mut() {
                 job.remove_finished_jobs();
             }
-            self.update_ground_tracks();
         }
     }
 

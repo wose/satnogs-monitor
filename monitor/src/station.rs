@@ -38,11 +38,6 @@ impl Station {
             }
         }
         self.jobs.sort_unstable_by_key(|job| job.start());
-
-        if let Some(job) = self.jobs.iter_mut().next() {
-            job.update_position();
-            job.update_ground_track();
-        }
     }
 
     pub fn location(&self) -> gpredict::Location {
