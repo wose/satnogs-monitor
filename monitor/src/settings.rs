@@ -35,6 +35,7 @@ impl UiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
+    pub local_station: bool,
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
@@ -43,6 +44,7 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
+        settings.set_default("local_station", false)?;
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;

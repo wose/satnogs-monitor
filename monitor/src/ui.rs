@@ -228,7 +228,9 @@ impl Ui {
         let utc: DateTime<Utc> = Utc::now();
         let station = self.state.stations.get(&self.active_station);
         let mut jobs = &vec![];
+        let mut sys_info = &crate::sysinfo::SysInfo::default();
         if let Some(station) = station {
+            sys_info = &station.sys_info;
             jobs = &station.jobs;
         }
         let logs = &self.logs;
@@ -283,19 +285,44 @@ impl Ui {
                         Style::default().fg(Color::Yellow),
                     ),
                     Text::styled("CPU          ", Style::default().fg(Color::Cyan)),
-                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
-                    Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
+                ];
+
+                if let Some(cpu_load) = &sys_info.cpu_load {
+                    for load in cpu_load {
+                        station_info.push(Text::styled(
+                            format!("{:4.1} ", 100.0 - load.idle * 100.0),
+                            Style::default().fg(COL_WHITE),
+                        ));
+                    }
+                } else {
+                    station_info.push(Text::styled(
+                        "                  - ",
+                        Style::default().fg(COL_WHITE),
+                    ));
+                }
+                station_info.extend_from_slice(&[
+                    Text::styled("%\n", Style::default().fg(Color::LightGreen)),
                     Text::styled("CPU Temp     ", Style::default().fg(Color::Cyan)),
-                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
+                    sys_info.cpu_temp.map_or(
+                        Text::styled("                  -", Style::default().fg(COL_WHITE)),
+                        |temp| {
+                            Text::styled(format!("{:19.1}", temp), Style::default().fg(COL_WHITE))
+                        },
+                    ),
                     Text::styled(" °C\n", Style::default().fg(Color::LightGreen)),
                     Text::styled("MEM          ", Style::default().fg(Color::Cyan)),
-                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
+                    sys_info.mem.as_ref().map_or(
+                        Text::styled("                  -", Style::default().fg(COL_WHITE)),
+                        |mem| {
+                            Text::styled(format!("{:19.1}", (mem.free.as_usize() as f32 / mem.total.as_usize() as f32) * 100.0), Style::default().fg(COL_WHITE))
+                        }
+                    ),
                     Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("FS /tmp      ", Style::default().fg(Color::Cyan)),
-                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
-                    Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
+//                    Text::styled("FS /tmp      ", Style::default().fg(Color::Cyan)),
+//                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
+//                    Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
                     Text::raw("\n"),
-                ];
+                ]);
 
                 let mut jobs_rev = jobs.iter();
                 if let Some(job) = jobs_rev.next() {
@@ -310,7 +337,7 @@ impl Ui {
                         Text::styled("Next Job", Style::default().fg(Color::Yellow)),
                         Text::styled(
                             format!(
-                                "                {:4}'{:2}\"\n\n",
+                                "                {:+4}'{:2}\"\n\n",
                                 delta_t.num_minutes(),
                                 (delta_t.num_seconds() % 60).abs()
                             ),
@@ -608,6 +635,13 @@ impl Ui {
                 warn!("No connection to SatNOGS network");
             }
             Event::Shutdown => self.shutdown = true,
+            Event::SystemInfo(station_id, sys_info) => {
+                trace!("Got system info for station {}", station_id);
+                self.state
+                    .stations
+                    .entry(station_id)
+                    .and_modify(|station| station.update_sys_info(sys_info));
+            }
             Event::Tick => {
                 self.handle_tick();
             }
