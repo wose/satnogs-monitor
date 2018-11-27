@@ -1,6 +1,7 @@
 //use termion::event::Event;
 use log::Level;
 use crate::satnogs::Data;
+use crate::sysinfo::SysInfo;
 
 pub enum Event {
     Input(termion::event::Event),
@@ -9,5 +10,6 @@ pub enum Event {
     NoSatnogsNetworkConnection,
     Resize,
     Shutdown,
+    SystemInfo(Vec<u64>, SysInfo),
     Tick,
 }

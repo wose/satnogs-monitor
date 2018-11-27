@@ -7,6 +7,9 @@ log_level = 1
 [[stations]]
 # Your stations SatNOGS id
 satnogs_id = 175
+# Set this to true if the monitor runs on the same machine as the SetNOGS ground station
+# to get system infos (CPU temperature, Mem usage, ...).
+local = false
 # The local IP address of your station
 # This will be used to get realtime information like system status, CPU temperature, ...
 # NOT USED YET
@@ -16,5 +19,5 @@ satnogs_id = 175
 # rt_port = 8377
 
 [ui]
-# number of orbits plotted on the map
+# Number of orbits plotted on the map.
 ground_track_num = 3

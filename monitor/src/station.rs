@@ -3,10 +3,12 @@ use satnogs_network_client as snc;
 use std::fmt;
 
 use crate::job::Job;
+use crate::sysinfo::SysInfo;
 
 pub struct Station {
     pub info: snc::StationInfo,
     pub jobs: Vec<Job>,
+    pub sys_info: SysInfo,
 }
 
 impl Station {
@@ -14,6 +16,7 @@ impl Station {
         Station {
             info: info,
             jobs: vec![],
+            sys_info: Default::default(),
         }
     }
 
@@ -46,6 +49,10 @@ impl Station {
             lon_deg: self.info.lng,
             alt_m: self.info.altitude,
         }
+    }
+
+    pub fn update_sys_info(&mut self, sys_info: SysInfo) {
+        self.sys_info = sys_info;
     }
 }
 
