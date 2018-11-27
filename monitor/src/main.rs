@@ -1,6 +1,6 @@
 use clap::{crate_authors, crate_version, value_t, values_t, App, Arg};
 use failure::Fail;
-use log::{error, info};
+use log::error;
 use satnogs_network_client::Client;
 use std::process;
 use std::thread;
@@ -30,7 +30,6 @@ type Result<T> = std::result::Result<T, failure::Error>;
 #[fail(display = "No station provided")]
 struct NoStationError;
 
-
 fn main() {
     if let Err(err) = run() {
         eprintln!("{}", format_error(&err));
@@ -57,14 +56,19 @@ fn run() -> Result<()> {
         );
     }
 
-    let local_station = settings.local_station;
+    let local_stations: Vec<_> = settings
+        .stations
+        .iter()
+        .filter(|sc| sc.local)
+        .map(|sc| sc.satnogs_id)
+        .collect();
     let mut tui = ui::Ui::new(settings, client, state)?;
 
-    if local_station {
+    if !local_stations.is_empty() {
         let tx = tui.sender();
         thread::spawn(move || {
             while let Ok(sys_info) = get_sysinfo() {
-                match tx.send(Event::SystemInfo(175, sys_info)) {
+                match tx.send(Event::SystemInfo(local_stations.clone(), sys_info)) {
                     Ok(_) => thread::sleep(std::time::Duration::new(4, 0)),
                     Err(e) => {
                         error!("Failed to send system info: {}", e);
@@ -86,16 +90,12 @@ fn get_sysinfo() -> Result<SysInfo> {
     let cpu_load = sys.cpu_load();
     thread::sleep(std::time::Duration::new(1, 0));
 
-    info!("{:?}", sys.cpu_temp());
-
-    Ok(
-        SysInfo {
-            cpu_load: cpu_load.and_then(|load| load.done()).ok(),
-            cpu_temp: sys.cpu_temp().ok(),
-            mem: sys.memory().ok(),
-            uptime: sys.uptime().ok(),
-        }
-    )
+    Ok(SysInfo {
+        cpu_load: cpu_load.and_then(|load| load.done()).ok(),
+        cpu_temp: sys.cpu_temp().ok(),
+        mem: sys.memory().ok(),
+        uptime: sys.uptime().ok(),
+    })
 }
 
 fn format_error(err: &failure::Error) -> String {
@@ -128,6 +128,9 @@ fn settings() -> Result<Settings> {
                 .short("l")
                 .long("local")
                 .help("Set if a sation runs on the same machine as the monitor")
+                .value_name("ID")
+                .takes_value(true)
+                .multiple(true),
         )
         .arg(
             Arg::with_name("orbits")
@@ -135,7 +138,7 @@ fn settings() -> Result<Settings> {
                 .long("orbits")
                 .help("Sets the number of orbits plotted on the map")
                 .value_name("NUM")
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("station")
@@ -172,9 +175,29 @@ fn settings() -> Result<Settings> {
 
     log::set_max_level(log_filter);
 
+    if let Ok(ids) = values_t!(matches.values_of("local_station"), u64) {
+        for id in ids {
+            // if the station was already configured in the config file we just overwrite the local flag
+            if let Some(sc) = settings.stations.iter_mut().find(|sc| sc.satnogs_id == id) {
+                (*sc).local = true;
+            } else {
+                let mut sc = StationConfig::new(id);
+                sc.local = true;;
+                settings.stations.push(sc);
+            }
+        }
+    }
+
     if let Ok(ids) = values_t!(matches.values_of("station"), u64) {
         for id in ids {
-            settings.stations.push(StationConfig::new(id));
+            if settings
+                .stations
+                .iter()
+                .find(|&sc| sc.satnogs_id == id)
+                .is_none()
+            {
+                settings.stations.push(StationConfig::new(id));
+            }
         }
     }
 
@@ -188,10 +211,6 @@ fn settings() -> Result<Settings> {
 
     if let Ok(orbits) = value_t!(matches.value_of("orbits"), u8) {
         settings.ui.ground_track_num = std::cmp::max(1, orbits);
-    }
-
-    if matches.is_present("local_station") {
-        settings.local_station = true;
     }
 
     Ok(settings)

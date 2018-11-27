@@ -10,6 +10,6 @@ pub enum Event {
     NoSatnogsNetworkConnection,
     Resize,
     Shutdown,
-    SystemInfo(u64, SysInfo),
+    SystemInfo(Vec<u64>, SysInfo),
     Tick,
 }

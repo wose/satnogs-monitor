@@ -4,8 +4,8 @@ use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct StationConfig {
+    pub local: bool,
     pub satnogs_id: u64,
-//    pub name: String,
     pub rt_ip: Option<String>,
     pub rt_port: Option<u32>,
 }
@@ -13,6 +13,7 @@ pub struct StationConfig {
 impl StationConfig {
     pub fn new(id: u64) -> Self {
         StationConfig {
+            local: false,
             satnogs_id: id,
             rt_ip: None,
             rt_port: None,
@@ -35,7 +36,6 @@ impl UiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
-    pub local_station: bool,
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
@@ -44,7 +44,6 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
-        settings.set_default("local_station", false)?;
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;
@@ -55,7 +54,7 @@ impl Settings {
                     .config_dir()
                     .join("config.toml")
                     .to_str()
-                    .ok_or(ConfigError::Message("Invalid project dir".to_string()))?
+                    .ok_or(ConfigError::Message("Invalid project dir".to_string()))?,
             );
             settings.merge(file.required(false))?;
         }

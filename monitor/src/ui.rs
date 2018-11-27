@@ -314,13 +314,20 @@ impl Ui {
                     sys_info.mem.as_ref().map_or(
                         Text::styled("                  -", Style::default().fg(COL_WHITE)),
                         |mem| {
-                            Text::styled(format!("{:19.1}", (mem.free.as_usize() as f32 / mem.total.as_usize() as f32) * 100.0), Style::default().fg(COL_WHITE))
-                        }
+                            Text::styled(
+                                format!(
+                                    "{:19.1}",
+                                    (mem.free.as_usize() as f32 / mem.total.as_usize() as f32)
+                                        * 100.0
+                                ),
+                                Style::default().fg(COL_WHITE),
+                            )
+                        },
                     ),
                     Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
-//                    Text::styled("FS /tmp      ", Style::default().fg(Color::Cyan)),
-//                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
-//                    Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
+                    //                    Text::styled("FS /tmp      ", Style::default().fg(Color::Cyan)),
+                    //                    Text::styled("                  -", Style::default().fg(COL_WHITE)),
+                    //                    Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
                     Text::raw("\n"),
                 ]);
 
@@ -635,12 +642,14 @@ impl Ui {
                 warn!("No connection to SatNOGS network");
             }
             Event::Shutdown => self.shutdown = true,
-            Event::SystemInfo(station_id, sys_info) => {
-                trace!("Got system info for station {}", station_id);
-                self.state
-                    .stations
-                    .entry(station_id)
-                    .and_modify(|station| station.update_sys_info(sys_info));
+            Event::SystemInfo(local_stations, sys_info) => {
+                trace!("Got system info for stations {:?}", local_stations);
+                for id in local_stations {
+                    self.state
+                        .stations
+                        .entry(id)
+                        .and_modify(|station| station.update_sys_info(sys_info.clone()));
+                }
             }
             Event::Tick => {
                 self.handle_tick();
