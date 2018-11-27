@@ -288,12 +288,22 @@ impl Ui {
                 ];
 
                 if let Some(cpu_load) = &sys_info.cpu_load {
-                    for load in cpu_load {
-                        station_info.push(Text::styled(
-                            format!("{:4.1} ", 100.0 - load.idle * 100.0),
-                            Style::default().fg(COL_WHITE),
-                        ));
-                    }
+                    let load = 100.0
+                        - cpu_load
+                            .iter()
+                            .fold(0.0, |acc, load| acc + load.idle * 100.0)
+                            / cpu_load.len() as f32;
+                    station_info.push(Text::styled(
+                        format!("{:>19.1} ", load),
+                        Style::default().fg(COL_WHITE),
+                    ));
+
+                //                    for load in cpu_load {
+                //                        station_info.push(Text::styled(
+                //                            format!("{:4.1} ", 100.0 - load.idle * 100.0),
+                //                            Style::default().fg(COL_WHITE),
+                //                        ));
+                //                    }
                 } else {
                     station_info.push(Text::styled(
                         "                  - ",
@@ -310,15 +320,17 @@ impl Ui {
                         },
                     ),
                     Text::styled(" °C\n", Style::default().fg(Color::LightGreen)),
-                    Text::styled("MEM          ", Style::default().fg(Color::Cyan)),
+                    Text::styled("Mem          ", Style::default().fg(Color::Cyan)),
                     sys_info.mem.as_ref().map_or(
                         Text::styled("                  -", Style::default().fg(COL_WHITE)),
                         |mem| {
                             Text::styled(
                                 format!(
                                     "{:19.1}",
-                                    (mem.free.as_usize() as f32 / mem.total.as_usize() as f32)
-                                        * 100.0
+                                    100.0
+                                        - (mem.free.as_usize() as f32
+                                            / mem.total.as_usize() as f32)
+                                            * 100.0
                                 ),
                                 Style::default().fg(COL_WHITE),
                             )
