@@ -5,5 +5,5 @@ authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
 [dependencies]
-clap = "~2"
-notify = "4.0.0"
+clap = "2.33.0"
+notify = "4.0.13"

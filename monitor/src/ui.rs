@@ -328,8 +328,8 @@ impl Ui {
                                 format!(
                                     "{:19.1}",
                                     100.0
-                                        - (mem.free.as_usize() as f32
-                                            / mem.total.as_usize() as f32)
+                                        - (mem.free.as_u64() as f32
+                                            / mem.total.as_u64() as f32)
                                             * 100.0
                                 ),
                                 Style::default().fg(COL_WHITE),

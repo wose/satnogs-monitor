@@ -5,10 +5,10 @@ authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
 [dependencies]
-futures = "0.1.25"
-log = "0.4.5"
+futures = "0.1.29"
+log = "0.4.8"
 rmp-rpc = "0.3.0"
-tokio = "0.1.11"
+tokio = "0.1.22"
 
 [dev-dependencies]
-pretty_env_logger = "0.2.4"
+pretty_env_logger = "0.3.1"
