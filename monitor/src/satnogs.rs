@@ -1,5 +1,5 @@
-use chrono::Utc;
 use crate::event::Event;
+use chrono::Utc;
 use log::{debug, error, info, trace, warn};
 use satnogs_network_client::{Job, Observation, ObservationFilter, ObservationList, StationInfo};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};

@@ -1,6 +1,6 @@
 [package]
 name = "satnogs-monitor"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
@@ -21,7 +21,7 @@ satnogs-network-client = { path = "../satnogs-network-client" }
 serde = "1.0.100"
 serde_derive = "1.0.100"
 signal-hook = "0.1.10"
-systemstat = { git = "https://github.com/myfreeweb/systemstat.git" }
+systemstat = { git = "https://github.com/wose/systemstat.git", branch = "bugfix/linux_mem" }
 termion = "1.5.3"
 time = "0.1.42"
 tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}

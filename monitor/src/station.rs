@@ -29,9 +29,8 @@ impl Station {
     }
 
     pub fn remove_finished_jobs(&mut self) {
-        self.jobs.retain(|job|
-                         job.end() - Utc::now() > Duration::zero()
-        );
+        self.jobs
+            .retain(|job| job.end() - Utc::now() > Duration::zero());
     }
 
     pub fn update_jobs(&mut self, jobs: Vec<(snc::Job, snc::Observation)>) {

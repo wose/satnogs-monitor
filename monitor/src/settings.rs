@@ -2,8 +2,9 @@ use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
 use serde_derive::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct StationConfig {
+    #[serde(default)]
     pub local: bool,
     pub satnogs_id: u64,
     pub rt_ip: Option<String>,
@@ -24,14 +25,6 @@ impl StationConfig {
 #[derive(Debug, Deserialize)]
 pub struct UiConfig {
     pub ground_track_num: u8,
-}
-
-impl UiConfig {
-    pub fn new() -> Self {
-        UiConfig {
-            ground_track_num: 3,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]

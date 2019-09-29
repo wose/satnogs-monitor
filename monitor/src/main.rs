@@ -1,6 +1,5 @@
 use clap::{crate_authors, crate_version, value_t, values_t, App, Arg};
 use failure::Fail;
-use log::error;
 use satnogs_network_client::Client;
 use std::process;
 use std::thread;
@@ -14,10 +13,9 @@ mod settings;
 mod state;
 mod station;
 mod sysinfo;
-mod theme;
 mod ui;
 mod vessel;
-//mod waterfall;
+mod widgets;
 
 use self::event::Event;
 use self::settings::{Settings, StationConfig};
@@ -54,7 +52,13 @@ fn run() -> Result<()> {
                 .station_info(station.satnogs_id)
                 .map(|si| Station::new(si))?,
         );
+
+        if state.active_station == 0 {
+            state.active_station = station.satnogs_id;
+        }
     }
+
+    state.update_ground_tracks(settings.ui.ground_track_num);
 
     let local_stations: Vec<_> = settings
         .stations
@@ -62,7 +66,8 @@ fn run() -> Result<()> {
         .filter(|sc| sc.local)
         .map(|sc| sc.satnogs_id)
         .collect();
-    let mut tui = ui::Ui::new(settings, client, state)?;
+    let tui = ui::Ui::new(settings, client, state)?;
+    log::set_boxed_logger(Box::new(logger::Logger::new(tui.sender())))?;
 
     if !local_stations.is_empty() {
         let tx = tui.sender();
@@ -71,7 +76,7 @@ fn run() -> Result<()> {
                 match tx.send(Event::SystemInfo(local_stations.clone(), sys_info)) {
                     Ok(_) => thread::sleep(std::time::Duration::new(4, 0)),
                     Err(e) => {
-                        error!("Failed to send system info: {}", e);
+                        log::error!("Failed to send system info: {}", e);
                         break;
                     }
                 }
@@ -79,9 +84,6 @@ fn run() -> Result<()> {
         });
     }
 
-    log::set_boxed_logger(Box::new(logger::Logger::new(tui.sender())))?;
-
-    tui.update_ground_tracks();
     tui.run()
 }
 
@@ -115,6 +117,15 @@ fn settings() -> Result<Settings> {
         .version(crate_version!())
         .author(crate_authors!("\n"))
         .about("Monitors the current and future jobs of SatNOGS ground stations.")
+        .max_term_width(100)
+        .arg(
+            Arg::with_name("api_url")
+                .short("a")
+                .long("api")
+                .help("Sets the SatNOGS network api endpoint url")
+                .value_name("URL")
+                .takes_value(true),
+        )
         .arg(
             Arg::with_name("config")
                 .short("c")
@@ -127,7 +138,10 @@ fn settings() -> Result<Settings> {
             Arg::with_name("local_station")
                 .short("l")
                 .long("local")
-                .help("Set if a sation runs on the same machine as the monitor")
+                .help(
+                    "Adds a station running on the same machine as this monitor \
+                     with this SatNOGS network id to to the list of monitored stations",
+                )
                 .value_name("ID")
                 .takes_value(true)
                 .multiple(true),
@@ -144,7 +158,10 @@ fn settings() -> Result<Settings> {
             Arg::with_name("station")
                 .short("s")
                 .long("station")
-                .help("Adds a station with this SatNOGS network id for this session")
+                .help(
+                    "Adds a station with this SatNOGS network id to the list of \
+                     monitored stations",
+                )
                 .value_name("ID")
                 .takes_value(true)
                 .multiple(true),
@@ -153,7 +170,7 @@ fn settings() -> Result<Settings> {
             Arg::with_name("verbosity")
                 .short("v")
                 .multiple(true)
-                .help("Sets the level of verbosity"),
+                .help("Sets the level of log verbosity"),
         );
 
     let matches = app.get_matches();

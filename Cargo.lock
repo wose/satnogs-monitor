@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "satnogs-monitor"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "circular-queue 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1336,7 +1336,7 @@ dependencies = [
  "serde 1.0.100 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.100 (registry+https://github.com/rust-lang/crates.io-index)",
  "signal-hook 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "systemstat 0.1.5 (git+https://github.com/myfreeweb/systemstat.git)",
+ "systemstat 0.1.5 (git+https://github.com/wose/systemstat.git?branch=bugfix/linux_mem)",
  "termion 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
  "tui 0.3.0-beta.3 (git+https://github.com/wose/tui-rs.git)",
@@ -1535,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "systemstat"
 version = "0.1.5"
-source = "git+https://github.com/myfreeweb/systemstat.git#614ecf3e24793873fe2a9e2b68f13a89994da517"
+source = "git+https://github.com/wose/systemstat.git?branch=bugfix/linux_mem#3144722515058673491dc8a9936c7d0c9a063f94"
 dependencies = [
  "bytesize 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2177,7 +2177,7 @@ dependencies = [
 "checksum syn 0.15.35 (registry+https://github.com/rust-lang/crates.io-index)" = "641e117d55514d6d918490e47102f7e08d096fdde360247e4a10f7a91a8478d3"
 "checksum syn 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "66850e97125af79138385e9b88339cbcd037e3f28ceab8c5ad98e64f0f1f80bf"
 "checksum synstructure 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)" = "02353edf96d6e4dc81aea2d8490a7e9db177bf8acb0e951c24940bf866cb313f"
-"checksum systemstat 0.1.5 (git+https://github.com/myfreeweb/systemstat.git)" = "<none>"
+"checksum systemstat 0.1.5 (git+https://github.com/wose/systemstat.git?branch=bugfix/linux_mem)" = "<none>"
 "checksum tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7dc4738f2e68ed2855de5ac9cdbe05c9216773ecde4739b2f095002ab03a13ef"
 "checksum termcolor 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "96d6098003bde162e4277c70665bd87c326f5a0c3f3fbfb285787fa482d54e6e"
 "checksum termion 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6a8fb22f7cde82c8220e5aeacb3258ed7ce996142c77cba193f203515e26c330"

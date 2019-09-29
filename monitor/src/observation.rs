@@ -1,5 +1,5 @@
-use time;
 use crate::vessel::Vessel;
+use time;
 
 pub struct Observation {
     pub norad_id: u64,
@@ -30,7 +30,5 @@ impl Observation {
         observation
     }
 
-    fn update_polar_plot(&mut self, vessel: &mut Vessel) {
-
-    }
+    fn update_polar_plot(&mut self, vessel: &mut Vessel) {}
 }

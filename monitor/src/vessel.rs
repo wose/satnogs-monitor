@@ -40,7 +40,8 @@ impl Vessel {
     pub fn update_position(&mut self, orbits: u8) {
         let mut predict = Predict::new(&self.tle, &self.qth);
         predict.update(None);
-        let update_ground_track = self.sat.orbit_nr != predict.sat.orbit_nr || self.ground_track.is_empty();
+        let update_ground_track =
+            self.sat.orbit_nr != predict.sat.orbit_nr || self.ground_track.is_empty();
         self.sat = predict.sat;
         if update_ground_track {
             self.update_ground_track(orbits);

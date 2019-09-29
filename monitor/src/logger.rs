@@ -8,9 +8,7 @@ pub struct Logger {
 
 impl Logger {
     pub fn new(sender: SyncSender<Event>) -> Self {
-        Logger {
-            sender,
-        }
+        Logger { sender }
     }
 }
 
@@ -26,6 +24,5 @@ impl Log for Logger {
         }
     }
 
-    fn flush(&self) {
-    }
+    fn flush(&self) {}
 }
