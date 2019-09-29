@@ -53,17 +53,11 @@ sudo ldconfig # for linux
 
 ### Rust
 
-Use your distribution package management to install `rustup` if possible.
-See [Install Rust](https://www.rust-lang.org/en-US/install.html).
-
-You'll need the *beta* or *nightly* version until Editions are in *stable*.
+Use your distribution package management to install `rust` or `rustup` if
+possible. See [Install Rust](https://www.rust-lang.org/en-US/install.html).
 
 ```
-rustup install beta
-```
-or
-```
-rustup install nightly
+rustup install stable
 ```
 
 ### A true color terminal
@@ -83,7 +77,7 @@ cd satnogs-monitor/monitor
 mkdir ~/.config/satnogs-monitor
 cp examples/config.toml ~/.config/satnogs-monitor/
 edit ~/.config/satnogs-monitor/config.toml
-cargo +beta run --release
+cargo run --release
 ```
 
 The config file is optional, you can also provide stations with the `-s`
@@ -91,7 +85,7 @@ parameter. At least one station has to be provided by either a config file or
 the command line.
 
 ```
-cargo +beta run --release -- -s 175 -s 227
+cargo run --release -- -s 175 -s 227
 ```
 
 ## Keys

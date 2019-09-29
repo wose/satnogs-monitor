@@ -264,7 +264,10 @@ where
                 as u16;
             if let Some(x_labels) = self.x_axis.labels {
                 if !x_labels.is_empty() {
-                    max_width = max(max_width, UnicodeWidthStr::width(x_labels[0].as_ref()) as u16);
+                    max_width = max(
+                        max_width,
+                        UnicodeWidthStr::width(x_labels[0].as_ref()) as u16,
+                    );
                 }
             }
             if x + max_width < area.right() {
@@ -301,7 +304,12 @@ where
             }
         }
 
-        if let Some(inner_width) = self.datasets.iter().map(|d| UnicodeWidthStr::width(d.name) as u16).max() {
+        if let Some(inner_width) = self
+            .datasets
+            .iter()
+            .map(|d| UnicodeWidthStr::width(d.name) as u16)
+            .max()
+        {
             let legend_width = inner_width + 2;
             let legend_height = self.datasets.len() as u16 + 2;
             if legend_width < layout.plot_area.width / 3
@@ -354,7 +362,10 @@ where
 
         if let Some(y) = layout.label_x {
             let labels = self.x_axis.labels.unwrap();
-            let total_width = labels.iter().fold(0, |acc, l| UnicodeWidthStr::width(l.as_ref()) + acc) as u16;
+            let total_width = labels
+                .iter()
+                .fold(0, |acc, l| UnicodeWidthStr::width(l.as_ref()) + acc)
+                as u16;
             let labels_len = labels.len() as u16;
             if total_width < plot_area.width && labels_len > 1 {
                 for (i, label) in labels.iter().enumerate() {
@@ -412,10 +423,10 @@ where
         for dataset in self.datasets {
             for (x, y) in dataset.data {
                 let dy = ((self.y_axis.bounds[1] - y) * f64::from(plot_area.height - 1)
-                      / (self.y_axis.bounds[1] - self.y_axis.bounds[0]))
+                    / (self.y_axis.bounds[1] - self.y_axis.bounds[0]))
                     as u16;
                 let dx = ((x - self.x_axis.bounds[0]) * f64::from(plot_area.width - 1)
-                      / (self.x_axis.bounds[1] - self.x_axis.bounds[0]))
+                    / (self.x_axis.bounds[1] - self.x_axis.bounds[0]))
                     as u16;
 
                 buf.get_mut(plot_area.left() + dx, plot_area.top() + dy)

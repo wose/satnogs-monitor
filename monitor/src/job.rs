@@ -1,7 +1,7 @@
+use crate::vessel::Vessel;
 use chrono::{DateTime, Utc};
 use gpredict::{Location, Sat};
 use satnogs_network_client as snc;
-use crate::vessel::Vessel;
 
 pub struct Job {
     job: snc::Job,
@@ -30,11 +30,11 @@ impl Job {
     }
 
     pub fn frequency_mhz(&self) -> f64 {
-        self.job.frequency as f64 /  1_000_000.0
+        self.job.frequency as f64 / 1_000_000.0
     }
 
     pub fn vessel_name(&self) -> &str {
-        &self.vessel.tle.name
+        &self.vessel.name()
     }
 
     pub fn start(&self) -> DateTime<Utc> {

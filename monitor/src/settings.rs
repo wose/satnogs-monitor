@@ -2,8 +2,9 @@ use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
 use serde_derive::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct StationConfig {
+    #[serde(default)]
     pub local: bool,
     pub satnogs_id: u64,
     pub rt_ip: Option<String>,
@@ -26,16 +27,9 @@ pub struct UiConfig {
     pub ground_track_num: u8,
 }
 
-impl UiConfig {
-    pub fn new() -> Self {
-        UiConfig {
-            ground_track_num: 3,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize)]
 pub struct Settings {
+    pub api_endpoint: String,
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
@@ -44,6 +38,7 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
+        settings.set_default("api_endpoint", "https://network.satnogs.org/api/")?;
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;

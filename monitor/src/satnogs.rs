@@ -1,20 +1,16 @@
-use chrono::Utc;
 use crate::event::Event;
-use log::{debug, error, info, trace, warn};
-use satnogs_network_client::{Job, Observation, ObservationFilter, ObservationList, StationInfo};
+use chrono::Utc;
+use log::{debug, error, trace, warn};
+use satnogs_network_client::{Job, Observation, ObservationFilter};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
 pub enum Data {
     Jobs(u64, Vec<(Job, Observation)>),
-    Observations(ObservationList),
-    StationInfo(u64, StationInfo),
 }
 
 pub enum Command {
     GetJobs(u64),
-    GetObservation(Option<u32>),
-    GetStationInfo(u64),
 }
 
 pub struct Connection {
@@ -22,24 +18,13 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn new(data_tx: SyncSender<Event>) -> Self {
+    pub fn new(data_tx: SyncSender<Event>, api_endpoint: String) -> Self {
         let (command_tx, command_rx) = sync_channel(100);
         thread::spawn(move || {
-            let mut client =
-                satnogs_network_client::Client::new("https://network.satnogs.org/api/").unwrap();
+            let mut client = satnogs_network_client::Client::new(&api_endpoint).unwrap();
 
             while let Ok(command) = command_rx.recv() {
                 match command {
-                    Command::GetStationInfo(id) => {
-                        trace!("GetStationInfo({})", id);
-                        if let Ok(station_info) = client.station_info(id) {
-                            data_tx
-                                .send(Event::CommandResponse(Data::StationInfo(id, station_info)))
-                                .unwrap();
-                        } else {
-                            data_tx.send(Event::NoSatnogsNetworkConnection).unwrap();
-                        }
-                    }
                     Command::GetJobs(id) => {
                         if let Ok(observations) = client.observations(
                             &ObservationFilter::new()
@@ -80,12 +65,6 @@ impl Connection {
                         } else {
                             error!("Failed to get observations for station {}", id);
                         }
-                    }
-                    Command::GetObservation(Some(id)) => {
-                        info!("GetObservation({})", id);
-                    }
-                    Command::GetObservation(None) => {
-                        info!("GetObservation(None)");
                     }
                 }
             }
