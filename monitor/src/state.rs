@@ -24,10 +24,6 @@ impl State {
         self.stations.insert(station.id(), station);
     }
 
-    pub fn add_vessel(&mut self, vessel: Vessel) {
-        self.vessels.insert(vessel.id, vessel);
-    }
-
     pub fn get_active_station(&self) -> &Station {
         self.stations.get(&self.active_station).unwrap()
     }

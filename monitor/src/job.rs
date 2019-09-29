@@ -34,7 +34,7 @@ impl Job {
     }
 
     pub fn vessel_name(&self) -> &str {
-        &self.vessel.tle.name
+        &self.vessel.name()
     }
 
     pub fn start(&self) -> DateTime<Utc> {

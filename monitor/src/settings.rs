@@ -29,6 +29,7 @@ pub struct UiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
+    pub api_endpoint: String,
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
@@ -37,6 +38,7 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut settings = Config::new();
+        settings.set_default("api_endpoint", "https://network.satnogs.org/api/")?;
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;

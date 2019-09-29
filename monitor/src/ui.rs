@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
 use failure::ResultExt;
-use log::{debug, info, trace, warn};
+use log::{debug, trace};
 use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
@@ -93,7 +93,7 @@ impl Ui {
             events: reciever,
             last_job_update: std::time::Instant::now(),
             logs: CircularQueue::with_capacity(100),
-            network: satnogs::Connection::new(sender.clone()),
+            network: satnogs::Connection::new(sender.clone(), settings.api_endpoint.clone()),
             sender: sender,
             settings,
             show_logs: false,
@@ -211,14 +211,6 @@ impl Ui {
                     self.state
                         .update_vessel_position(self.settings.ui.ground_track_num);
                 }
-                satnogs::Data::Observations(_) => info!("Got observations update"),
-                satnogs::Data::StationInfo(station_id, info) => {
-                    info!("Got info for station {}", station_id);
-                    self.state
-                        .stations
-                        .entry(station_id)
-                        .and_modify(|station| station.info = info);
-                }
             },
             Event::Resize => debug!("Terminal size changed"),
             Event::Input(event) => {
@@ -226,9 +218,6 @@ impl Ui {
             }
             Event::Log((level, message)) => {
                 self.logs.push((Utc::now(), level, message));
-            }
-            Event::NoSatnogsNetworkConnection => {
-                warn!("No connection to SatNOGS network");
             }
             Event::SystemInfo(local_stations, sys_info) => {
                 trace!("Got system info for stations {:?}", local_stations);

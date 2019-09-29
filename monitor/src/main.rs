@@ -42,7 +42,7 @@ fn main() {
 fn run() -> Result<()> {
     let settings = settings()?;
     // get the station info from the network
-    let mut client = Client::new("https://network.satnogs.org/api/")?;
+    let mut client = Client::new(&settings.api_endpoint)?;
 
     let mut state = state::State::new();
 
@@ -191,6 +191,10 @@ fn settings() -> Result<Settings> {
     };
 
     log::set_max_level(log_filter);
+
+    if let Ok(api_endpoint) = value_t!(matches.value_of("api_url"), String) {
+        settings.api_endpoint = api_endpoint;
+    }
 
     if let Ok(ids) = values_t!(matches.values_of("local_station"), u64) {
         for id in ids {
