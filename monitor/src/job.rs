@@ -19,6 +19,8 @@ impl Job {
                 &job.tle1,
                 &job.tle2,
                 qth,
+                job.start,
+                job.end,
             ),
             job,
             observation,

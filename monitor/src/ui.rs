@@ -9,16 +9,18 @@ use tui::backend::*;
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::symbols::DOT;
-use tui::widgets::canvas::{Canvas, Map, MapResolution, Points};
+use tui::widgets::canvas::{Canvas, Context, Line, Map, MapResolution, Points};
 use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
 use tui::Frame;
 use tui::Terminal;
 
+use std::f64::consts;
 use std::io;
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
 use std::thread;
 
 use crate::event::Event;
+use crate::job::Job;
 use crate::satnogs;
 use crate::settings::Settings;
 use crate::state::State;
@@ -161,10 +163,13 @@ impl Ui {
                     .block(Block::default())
                     .render(&mut f, rows[0]);
 
-                let rect = render_station_view(&mut f, body[0], &station);
-                let rect = render_next_job_view(&mut f, rect, &station);
-                let rect = render_satellite_view(&mut f, rect, &station);
-                let rect = render_future_jobs_view(&mut f, rect, &station);
+                let mut rect = render_station_view(&mut f, body[0], &station);
+                rect = render_next_job_view(&mut f, rect, &station);
+                if let Some(job) = station.jobs.iter().next() {
+                    rect = render_polar_plot(&mut f, rect, &job);
+                }
+                rect = render_satellite_view(&mut f, rect, &station);
+                rect = render_future_jobs_view(&mut f, rect, &station);
 
                 // to create the rest of the border we add an empty paragraph
                 Paragraph::new([].iter())
@@ -338,6 +343,119 @@ fn render_map_view<T: Backend>(
         .x_bounds([-180.0, 180.0])
         .y_bounds([-90.0, 90.0])
         .render(t, rect);
+}
+
+fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rect {
+    let area = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(rect.width / 2), Constraint::Min(0)].as_ref())
+        .split(rect);
+
+    Canvas::default()
+        .paint(|ctx| {
+            ctx.draw(&Line {
+                x1: -100.0,
+                y1: 0.0,
+                x2: 100.0,
+                y2: 0.0,
+                color: COL_LIGHT_BG,
+            });
+            ctx.draw(&Line {
+                x1: 0.0,
+                y1: -100.0,
+                x2: 0.0,
+                y2: 100.0,
+                color: COL_LIGHT_BG,
+            });
+            draw_arc(ctx, COL_LIGHT_BG, (0.0, 0.0), 100.0, 0.0, 360.0, 360);
+            draw_arc(ctx, COL_LIGHT_BG, (0.0, 0.0), 100.0 / 3.0, 0.0, 360.0, 360);
+            draw_arc(ctx, COL_LIGHT_BG, (0.0, 0.0), 200.0 / 3.0, 0.0, 360.0, 360);
+
+            ctx.layer();
+            ctx.print(-110.0, 0.0, "W", Color::Yellow);
+            ctx.print(110.0, 0.0, "E", Color::Yellow);
+            ctx.print(0.0, 120.0, "N", Color::Yellow);
+            ctx.print(0.0, -110.0, "S", Color::Yellow);
+
+            ctx.layer();
+            let polar_track = &job
+                .vessel
+                .polar_track
+                .iter()
+                .map(|point| azel2xy(point))
+                .collect::<Vec<(f64, f64)>>();
+
+            let aos_point = polar_track.first();
+            let los_point = polar_track.last();
+
+            let points = Points {
+                coords: polar_track,
+                color: Color::Cyan,
+            };
+            ctx.draw(&points);
+
+            if let Some(aos_point) = aos_point {
+                ctx.print(aos_point.0, aos_point.1, DOT, Color::Green);
+            }
+
+            if let Some(los_point) = los_point {
+                ctx.print(los_point.0, los_point.1, DOT, Color::Red);
+            }
+
+            let now = Utc::now();
+            if now >= job.start() && now <= job.end() {
+                let position = azel2xy(&(job.sat().az_deg, job.sat().el_deg));
+                ctx.print(position.0, position.1, "■", Color::LightRed);
+            }
+        })
+        .x_bounds([-120.0, 120.0])
+        .y_bounds([-120.0, 120.0])
+        .block(
+            Block::default()
+                .borders(Borders::RIGHT)
+                .border_style(Style::default().fg(COL_DARK_CYAN)),
+        )
+        .render(t, area[0]);
+
+    area[1]
+}
+
+fn azel2xy(point: &(f64, f64)) -> (f64, f64) {
+    let az = point.0 * consts::PI / 180.0;
+    let el = point.1 * consts::PI / 180.0;
+
+    let radius = 100.0 - (2.0 * 100.0 * el) / consts::PI;
+    let x = radius * az.sin();
+    let y = radius * az.cos();
+
+    (x, y)
+}
+
+fn draw_arc(
+    ctx: &mut Context,
+    color: Color,
+    center: (f64, f64),
+    radius: f64,
+    a_min: f64,
+    a_max: f64,
+    segments: usize,
+) {
+    let mut points = vec![];
+
+    for segment in 0..=segments {
+        let angle = a_min + (segment as f64 / segments as f64) * (a_max - a_min);
+        points.push((
+            center.0 + angle.cos() * radius,
+            center.1 + angle.sin() * radius,
+        ));
+    }
+
+    let points = Points {
+        coords: &points.as_slice(),
+        color,
+    };
+
+    ctx.draw(&points);
 }
 
 fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Station) -> Rect {
