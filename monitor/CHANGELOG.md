@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Command line parameter -a|--api to specify the SatNOGS network api endpoint.
 - Polar plot
+- Show satellite footprint on map.
 
 ### Changed
 - Display as many future jobs as possible.

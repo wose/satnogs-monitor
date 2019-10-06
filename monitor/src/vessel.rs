@@ -3,6 +3,7 @@ use gpredict::{Location, Predict, Sat, Tle};
 use time;
 
 pub struct Vessel {
+    pub footprint: Vec<(f64, f64)>,
     pub ground_track: Vec<(f64, f64)>,
     pub polar_track: Vec<(f64, f64)>,
     pub id: u64,
@@ -33,6 +34,7 @@ impl Vessel {
         predict.update(None);
 
         Vessel {
+            footprint: vec![],
             ground_track: vec![],
             polar_track,
             id,
@@ -59,6 +61,65 @@ impl Vessel {
         if update_ground_track {
             self.update_ground_track(orbits);
         }
+        self.update_footprint();
+    }
+
+    pub fn update_footprint(&mut self) {
+        use std::f64::consts::PI;
+        let xkmper = 6.378135E3;
+        let footprint = 12756.33 * (xkmper / (xkmper + self.sat.alt_km)).acos();
+        let beta = (0.5 * footprint) / xkmper;
+
+        self.footprint.clear();
+
+        for azi in 0..180 {
+            let azimuth = (azi as f64).to_radians();
+            let sat_lat = self.sat.lat_deg.to_radians();
+            let sat_lon = self.sat.lon_deg.to_radians();
+
+            let range_lat =
+                (sat_lat.sin() * beta.cos() + azimuth.cos() * beta.sin() * sat_lat.cos()).asin();
+
+            let num = beta.cos() - sat_lat.sin() * range_lat.sin();
+            let dem = sat_lat.cos() * range_lat.cos();
+
+            let mut range_lon = match (num, dem) {
+                (x, y) if (x / y).abs() > 1.0 => sat_lon,
+                (x, y) if y > 0.0 => sat_lon - (x / y).acos(),
+                (x, y) if y < 0.0 => sat_lon + (x / y).acos() + PI,
+                _ => 0.0,
+            };
+
+            while range_lon < -PI {
+                range_lon += 2.0 * PI;
+            }
+
+            while range_lon > PI {
+                range_lon -= 2.0 * PI;
+            }
+
+            let range_lon_deg = range_lon.to_degrees();
+
+            let mut diff = self.sat.lon_deg - range_lon_deg;
+            while diff < 0.0 {
+                diff += 360.0;
+            }
+            while diff > 360.0 {
+                diff -= 360.0;
+            }
+
+            let mut mirror_lon_deg = self.sat.lon_deg + diff.abs();
+            while mirror_lon_deg > 180.0 {
+                mirror_lon_deg -= 360.0;
+            }
+            while mirror_lon_deg < -180.0 {
+                mirror_lon_deg += 360.0;
+            }
+
+            self.footprint.push((range_lon_deg, range_lat.to_degrees()));
+            self.footprint
+                .push((mirror_lon_deg, range_lat.to_degrees()));
+        }
     }
 
     pub fn update_ground_track(&mut self, orbits: u8) {
@@ -72,7 +133,7 @@ impl Vessel {
         let mut time = time::now_utc();
 
         while current_orbit == this_orbit {
-            time = time - time::Duration::seconds(15);
+            time = time - time::Duration::seconds(10);
             predict.update(Some(time));
             current_orbit = predict.sat.orbit_nr;
         }
@@ -80,7 +141,7 @@ impl Vessel {
         current_orbit = this_orbit;
         self.ground_track.clear();
         while current_orbit < this_orbit + orbits as u64 {
-            time = time + time::Duration::seconds(15);
+            time = time + time::Duration::seconds(10);
             predict.update(Some(time));
             self.ground_track
                 .push((predict.sat.lon_deg, predict.sat.lat_deg));

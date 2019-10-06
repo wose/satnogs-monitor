@@ -338,6 +338,13 @@ fn render_map_view<T: Backend>(
                 ground_track.coords =
                     &job.vessel.ground_track[..job.vessel.ground_track.len() / ground_tracks];
                 ctx.draw(&ground_track);
+
+                ctx.layer();
+                let footprint = Points {
+                    coords: &job.vessel.footprint,
+                    color: Color::Green,
+                };
+                ctx.draw(&footprint);
             }
         })
         .x_bounds([-180.0, 180.0])
@@ -421,8 +428,8 @@ fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rec
 }
 
 fn azel2xy(point: &(f64, f64)) -> (f64, f64) {
-    let az = point.0 * consts::PI / 180.0;
-    let el = point.1 * consts::PI / 180.0;
+    let az = point.0.to_radians();
+    let el = point.1.to_radians();
 
     let radius = 100.0 - (2.0 * 100.0 * el) / consts::PI;
     let x = radius * az.sin();
