@@ -1,6 +1,6 @@
 [package]
 name = "satnogs-monitor"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
@@ -18,8 +18,8 @@ log = { version = "0.4.8", features = ["std"] }
 read_color = "1.0.0"
 satnogs-db-client = { path = "../satnogs-db-client" }
 satnogs-network-client = { path = "../satnogs-network-client" }
-serde = "1.0.100"
-serde_derive = "1.0.100"
+serde = "1.0.101"
+serde_derive = "1.0.101"
 signal-hook = "0.1.10"
 systemstat = { git = "https://github.com/myfreeweb/systemstat.git" }
 termion = "1.5.3"

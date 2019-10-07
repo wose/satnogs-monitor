@@ -60,6 +60,15 @@ possible. See [Install Rust](https://www.rust-lang.org/en-US/install.html).
 rustup install stable
 ```
 
+If you want to build the monitor on the rpi you'll have to settle with version
+`1.37.0` for now:
+
+```
+rustup install 1.37.0
+```
+
+For more information see rust-lang/rust#62896
+
 ### A true color terminal
 
 While other terminals will be supported in the future, the screenshot was taken
@@ -92,6 +101,7 @@ cargo run --release -- -s 175 -s 227
 
 Key            | Description
 ---------------|------------
+`f` | toggle satellite footprint
 `l` | toggle log window
 `\t` | next station
 `q`, `ctrl-c` | quit

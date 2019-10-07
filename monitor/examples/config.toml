@@ -1,19 +1,19 @@
 # satnogs-monitor example config
 
 # log level 0 -> WARN, 1 -> INFO, 2 -> DEBUG, 3 -> TRACE
-log_level = 1
+#log_level = 1
 
 
-[[stations]]
+#[[stations]]
 # Your stations SatNOGS id
-satnogs_id = 175
+#satnogs_id = 175
 # Set this to true if the monitor runs on the same machine as the SetNOGS ground station
 # to get system infos (CPU temperature, Mem usage, ...).
-local = false
+#local = false
 
 [ui]
 # Number of orbits plotted on the map.
-ground_track_num = 3
+#ground_track_num = 3
 # draw the satellite footprint on the map
-sat_footprint = true
+#sat_footprint = true
 
