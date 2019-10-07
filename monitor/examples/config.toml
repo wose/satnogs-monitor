@@ -10,14 +10,10 @@ satnogs_id = 175
 # Set this to true if the monitor runs on the same machine as the SetNOGS ground station
 # to get system infos (CPU temperature, Mem usage, ...).
 local = false
-# The local IP address of your station
-# This will be used to get realtime information like system status, CPU temperature, ...
-# NOT USED YET
-# rt_ip = "192.168.0.13"
-# The port of the station node providing realtime information
-# NOT USED YET
-# rt_port = 8377
 
 [ui]
 # Number of orbits plotted on the map.
 ground_track_num = 3
+# draw the satellite footprint on the map
+sat_footprint = true
+

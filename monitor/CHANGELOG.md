@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command line parameter -a|--api to specify the SatNOGS network api endpoint.
 - Polar plot
 - Show satellite footprint on map.
+- toggle satellite footprint with `f` key
+- config option `sat_footprint` to enable/disable satellite footprint on start
 
 ### Changed
 - Display as many future jobs as possible.

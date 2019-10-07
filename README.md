@@ -18,7 +18,7 @@ Note: the list is by no means complete or in any particular order.
 
 - [X] reduce API queries
 - [X] calculate ground tracks only when a new orbit begins
-- [ ] show satellite footprint (can be toggled)
+- [X] show satellite footprint (can be toggled)
 - [X] polar plot
 - [X] refactor station info, obs info, etc. into separate widgets
 - [ ] detect supported colors and change palette accordingly

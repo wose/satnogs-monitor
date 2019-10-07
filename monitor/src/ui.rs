@@ -154,6 +154,7 @@ impl Ui {
         let logs = &self.logs;
         let show_logs = self.show_logs;
         let ground_tracks = self.settings.ui.ground_track_num as usize;
+        let sat_footprint = self.settings.ui.sat_footprint;
         let state = &self.state;
 
         self.terminal
@@ -180,7 +181,7 @@ impl Ui {
                     )
                     .render(&mut f, rect);
 
-                render_map_view(&mut f, body[1], &station, ground_tracks);
+                render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
 
                 if show_logs {
                     render_log_view(&mut f, log_area, logs);
@@ -197,6 +198,7 @@ impl Ui {
 
         match *event {
             Key(Ctrl('c')) => self.shutdown = true,
+            Key(Char('f')) => self.settings.ui.sat_footprint = !self.settings.ui.sat_footprint,
             Key(Char('l')) => self.show_logs = !self.show_logs,
             Key(Char('\t')) => self.next_station(),
             Key(Ctrl('\t')) => self.prev_station(),
@@ -307,6 +309,7 @@ fn render_map_view<T: Backend>(
     rect: Rect,
     station: &Station,
     ground_tracks: usize,
+    footprint: bool,
 ) {
     Canvas::default()
         .paint(|ctx| {
@@ -339,12 +342,14 @@ fn render_map_view<T: Backend>(
                     &job.vessel.ground_track[..job.vessel.ground_track.len() / ground_tracks];
                 ctx.draw(&ground_track);
 
-                ctx.layer();
-                let footprint = Points {
-                    coords: &job.vessel.footprint,
-                    color: Color::Green,
-                };
-                ctx.draw(&footprint);
+                if footprint {
+                    ctx.layer();
+                    let footprint = Points {
+                        coords: &job.vessel.footprint,
+                        color: Color::Green,
+                    };
+                    ctx.draw(&footprint);
+                }
             }
         })
         .x_bounds([-180.0, 180.0])
