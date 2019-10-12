@@ -14,6 +14,8 @@ use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
 use tui::Frame;
 use tui::Terminal;
 
+use tui::widgets::{Axis, Chart, Dataset, Marker};
+
 use std::f64::consts;
 use std::io;
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
@@ -49,6 +51,10 @@ pub struct Ui {
     state: State,
     terminal: Terminal<TermBackend>,
     ticks: u32,
+
+    waterfall_obs_id: u64,
+    waterfall_frequencies: Vec<f32>,
+    waterfall_data: Vec<(f32, Vec<f32>)>,
 }
 
 impl Ui {
@@ -104,6 +110,9 @@ impl Ui {
             state,
             terminal,
             ticks: 0,
+            waterfall_obs_id: 0,
+            waterfall_frequencies: vec![],
+            waterfall_data: vec![],
         };
 
         Ok(ui)
@@ -156,6 +165,8 @@ impl Ui {
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
         let state = &self.state;
+        let waterfall_data = &self.waterfall_data;
+        let waterfall_frequencies = &self.waterfall_frequencies;
 
         self.terminal
             .draw(|mut f| {
@@ -181,7 +192,68 @@ impl Ui {
                     )
                     .render(&mut f, rect);
 
-                render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
+                if !waterfall_data.is_empty() {
+                    let main_area = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([Constraint::Percentage(50), Constraint::Min(0)].as_ref())
+                        .split(body[1]);
+ 
+                    render_map_view(&mut f, main_area[0], &station, ground_tracks, sat_footprint);
+
+                    Chart::default()
+                        .block(
+                            Block::default()
+                                .title("Spectrum")
+                                .title_style(Style::default().fg(Color::Yellow))
+                                .borders(Borders::TOP)
+                                .border_style(Style::default().fg(Color::DarkGray)),
+                        )
+                        .x_axis(
+                            Axis::default()
+                                .title("Frequency (kHz)")
+                                .title_style(Style::default().fg(Color::DarkGray))
+                                .style(Style::default().fg(Color::DarkGray))
+                                .bounds([*waterfall_frequencies.first().unwrap() as f64, *waterfall_frequencies.last().unwrap() as f64])
+                                .labels(&[
+                                    &format!("{}", (waterfall_frequencies.first().unwrap() / 1000.0).floor()),
+                                    &format!("{}", (waterfall_frequencies.first().unwrap() / 1000.0 / 2.0).floor()),
+                                    &format!("{}", 0),
+                                    &format!("{}", (waterfall_frequencies.last().unwrap() / 1000.0 / 2.0).ceil()),
+                                    &format!("{}", (waterfall_frequencies.last().unwrap() / 1000.0).ceil()),
+                                ])
+                                .labels_style(Style::default().fg(Color::DarkGray)),
+                        )
+                        .y_axis(
+                            Axis::default()
+                                .title("Power (dB)")
+                                .title_style(Style::default().fg(Color::DarkGray))
+                                .style(Style::default().fg(Color::DarkGray))
+                                .bounds([-100.0, 0.0])
+                                .labels(&["-100", "-50", "0"])
+                                .labels_style(Style::default().fg(Color::DarkGray)),
+                        )
+                        .datasets(&[
+                            Dataset::default()
+                                .marker(Marker::Braille)
+                                .style(Style::default().fg(Color::Cyan))
+                                .data(
+                                    waterfall_frequencies
+                                        .iter()
+                                        .zip(
+                                            &waterfall_data
+                                                .last()
+                                                .unwrap()
+                                                .1
+                                        )
+                                        .map(|(x, y)| (*x as f64, *y as f64))
+                                        .collect::<Vec<_>>().as_ref()
+                                ),
+                        ])
+                        .render(&mut f, main_area[1]);
+                    
+                } else {
+                    render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
+                }
 
                 if show_logs {
                     render_log_view(&mut f, log_area, logs);
@@ -237,6 +309,18 @@ impl Ui {
             }
             Event::Tick => {
                 self.handle_tick();
+            }
+            Event::WaterfallCreated(obs_id, frequencies) => {
+                self.waterfall_obs_id= obs_id;
+                self.waterfall_frequencies= frequencies;
+            }
+            Event::WaterfallData(seconds, data) => {
+                self.waterfall_data.push((seconds, data));
+            }
+            Event::WaterfallClosed(_obs_id) => {
+                self.waterfall_data.clear();
+                self.waterfall_frequencies.clear();
+                self.waterfall_obs_id = 0;
             }
         }
     }
@@ -321,11 +405,10 @@ fn render_map_view<T: Backend>(
             ctx.print(station.info.lng, station.info.lat, DOT, Color::LightCyan);
 
             if let Some(job) = station.jobs.iter().next() {
-                let marker = format!("■─{}", job.vessel_name());
                 ctx.print(
                     job.sat().lon_deg,
                     job.sat().lat_deg,
-                    marker,
+                    format!("■─{}", job.vessel_name()),
                     Color::LightRed,
                 );
                 ctx.layer();
@@ -800,7 +883,6 @@ fn render_log_view<T: Backend>(t: &mut Frame<T>, rect: Rect, logs: &LogQueue) {
     let block = Block::default()
         .borders(Borders::RIGHT | Borders::LEFT | Borders::TOP)
         .border_style(Style::default().fg(COL_DARK_CYAN))
-        .style(Style::default().modifier(tui::style::Modifier::empty()))
         .title("Log")
         .title_style(Style::default().fg(Color::Yellow));
 
