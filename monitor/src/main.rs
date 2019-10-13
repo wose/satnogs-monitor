@@ -5,13 +5,6 @@ use std::process;
 use std::thread;
 use systemstat::{Platform, System};
 
-use crossbeam_channel::unbounded;
-use notify::{RecursiveMode, Watcher, immediate_watcher};
-use regex::Regex;
-use byteorder::{LittleEndian, ReadBytesExt};
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Seek, SeekFrom};
-
 mod event;
 mod job;
 mod logger;
@@ -22,12 +15,14 @@ mod station;
 mod sysinfo;
 mod ui;
 mod vessel;
+mod waterfall;
 mod widgets;
 
 use self::event::Event;
 use self::settings::{Settings, StationConfig};
 use self::station::Station;
 use self::sysinfo::SysInfo;
+use self::waterfall::WaterfallWatcher;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
@@ -60,7 +55,7 @@ fn run() -> Result<()> {
                 .map(Station::new)?,
         );
 
-        if state.active_station == 0 { 
+        if state.active_station == 0 {
             state.active_station = station.satnogs_id;
         }
     }
@@ -92,112 +87,11 @@ fn run() -> Result<()> {
 
         // watch for waterfall if enabled
         let tx = tui.sender();
+        let mut waterfall_watcher = WaterfallWatcher::new("/tmp/.satnogs/data/", tx)?;
+
         thread::spawn(move || {
-            let (watcher_tx, watcher_rx) = unbounded();
-            if let Ok(mut watcher) = immediate_watcher(watcher_tx) {
-                if watcher.watch("/tmp/.satnogs/data/", RecursiveMode::NonRecursive).is_ok() {
-                    let mut fft_size = 0u64;
-                    let mut observation = 0u64;
-                    let mut file = None;
-                    let re = Regex::new(r".*/.*receiving_waterfall_(\d+)_.*\.dat.*").unwrap();
-
-                    let is_data_available = |reader: &mut BufReader<File>, fft_size: u64| {
-                        let size = reader.get_ref().metadata().unwrap().len();
-                        let position = reader.seek(SeekFrom::Current(0)).unwrap();
-
-                        (size - position >= fft_size * 4 + 4)
-                    };
- 
-                    loop {
-                        match watcher_rx.recv() {
-                            Ok(event) => {
-                                if let Ok(op) = event.op {
-                                    if op.contains(notify::Op::CREATE) {
-                                        if let Some(path) = &event.path {
-                                            log::info!("File created: {}", path.to_str().unwrap());
-
-                                            if let Some(obs_id) = re.captures(path.to_str().unwrap()) {
-                                                observation = obs_id[1].parse().unwrap();
-                                                let reader = OpenOptions::new().read(true).open(path).ok();
-
-                                                if let Some(waterfall) = reader {
-                                                    while waterfall.metadata().unwrap().len() < 4 {}
-
-                                                    let mut waterfall = BufReader::new(waterfall);
-                                                    fft_size = waterfall.read_f32::<LittleEndian>().unwrap() as u64;
-
-                                                    while waterfall.get_ref().metadata().unwrap().len() < 4 + 4 * fft_size {}
-
-                                                    let mut frequencies = vec![];
-                                                    frequencies.reserve(fft_size as usize);
-                                                    for _ in 0..fft_size {
-                                                        frequencies.push(waterfall.read_f32::<LittleEndian>().unwrap());
-                                                    }
-
-                                                    if let Err(err) = tx.send(Event::WaterfallCreated(observation, frequencies)) {
-                                                        log::error!("Failed to send waterfall creation event: {}", err);
-                                                    }
-                                                    file = Some(waterfall);
-                                                }
-                                            };
-                                        };
-                                    }
-
-                                    if op.contains(notify::Op::WRITE) {
-                                        if let Some(mut waterfall) = file {
-                                            if let Some(path) = &event.path {
-                                                if let Some(obs_id) = re.captures(path.to_str().unwrap()) {
-                                                    let obs_id: u64 = obs_id[1].parse().unwrap();
-                                                    if obs_id != observation {
-                                                        log::warn!("Waterfall doesn't match last observarion {} != {}", obs_id, observation);
-                                                    } else {
-                                                        log::info!("New waterfall data for observation {}", observation);
-
-                                                        while is_data_available(&mut waterfall, fft_size) {
-                                                            let seconds = waterfall.read_f32::<LittleEndian>().unwrap();
-                                                            let mut data = vec![];
-                                                            data.reserve(fft_size as usize);
-                                                            for _ in 0..fft_size {
-                                                                data.push(waterfall.read_f32::<LittleEndian>().unwrap());
-                                                            }
-
-                                                            if let Err(err) = tx.send(Event::WaterfallData(seconds, data)) {
-                                                                log::error!("Failed to send waterfall data event: {}", err);
-                                                            }
-                                                        }
-
-                                                    }
-                                                };
-                                            };
-                                            file = Some(waterfall);
-                                        };
-                                    }
-
-                                    if op.contains(notify::Op::CLOSE_WRITE) {
-                                        if let Some(path) = &event.path {
-                                            if let Some(obs_id) = re.captures(path.to_str().unwrap()) {
-                                                let obs_id = obs_id[1].parse().unwrap();
-                                                log::info!("Closed waterfall for observation {}", obs_id);
-                                                if let Err(err) = tx.send(Event::WaterfallClosed(obs_id)) {
-                                                    log::error!("Failed to send waterfall closing event: {}", err);
-                                                }
-                                            };
-                                        };
-                                    }
-                                }
-                            },
-                            Err(err) => {
-                                log::error!("Watcher error: {}. Stopping watcher.", err);
-                                break;
-                            }
-                        }
-                    }
-                } else {
-                    log::error!("Failed to watch waterfall directory.");
-                }
-
-            } else {
-                log::error!("Failed to create waterfall watcher.");
+            if let Err(err) = waterfall_watcher.run() {
+                log::error!("Waterfall watcher stopped with error: {}", err);
             }
         });
     }
