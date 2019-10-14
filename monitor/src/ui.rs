@@ -193,92 +193,19 @@ impl Ui {
                     )
                     .render(&mut f, rect);
 
+                // render main area on the right
+                rect = body[1];
                 if !waterfall_data.is_empty() {
-                    let main_area = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Percentage(50), Constraint::Min(0)].as_ref())
-                        .split(body[1]);
-
-                    render_map_view(&mut f, main_area[0], &station, ground_tracks, sat_footprint);
-
-                    Chart::default()
-                        .block(
-                            Block::default()
-                                .title(&format!("Spectrum (x{:.*})", 1, waterfall_zoom))
-                                .title_style(Style::default().fg(Color::Yellow))
-                                .borders(Borders::TOP)
-                                .border_style(Style::default().fg(Color::DarkGray)),
-                        )
-                        .x_axis(
-                            Axis::default()
-                                .title("Frequency (kHz)")
-                                .title_style(Style::default().fg(Color::DarkGray))
-                                .style(Style::default().fg(Color::DarkGray))
-                                .bounds([
-                                    (*waterfall_frequencies.first().unwrap() / waterfall_zoom)
-                                        as f64,
-                                    (*waterfall_frequencies.last().unwrap() / waterfall_zoom)
-                                        as f64,
-                                ])
-                                .labels(&[
-                                    &format!(
-                                        "{}",
-                                        (waterfall_frequencies.first().unwrap()
-                                            / 1000.0
-                                            / waterfall_zoom)
-                                            .floor()
-                                    ),
-                                    &format!(
-                                        "{}",
-                                        (waterfall_frequencies.first().unwrap()
-                                            / 1000.0
-                                            / 2.0
-                                            / waterfall_zoom)
-                                            .floor()
-                                    ),
-                                    &format!("{}", 0),
-                                    &format!(
-                                        "{}",
-                                        (waterfall_frequencies.last().unwrap()
-                                            / 1000.0
-                                            / 2.0
-                                            / waterfall_zoom)
-                                            .ceil()
-                                    ),
-                                    &format!(
-                                        "{}",
-                                        (waterfall_frequencies.last().unwrap()
-                                            / 1000.0
-                                            / waterfall_zoom)
-                                            .ceil()
-                                    ),
-                                ])
-                                .labels_style(Style::default().fg(Color::DarkGray)),
-                        )
-                        .y_axis(
-                            Axis::default()
-                                .title("Power (dB)")
-                                .title_style(Style::default().fg(Color::DarkGray))
-                                .style(Style::default().fg(Color::DarkGray))
-                                .bounds([-100.0, 0.0])
-                                .labels(&["-100", "-50", "0"])
-                                .labels_style(Style::default().fg(Color::DarkGray)),
-                        )
-                        .datasets(&[Dataset::default()
-                            .marker(Marker::Braille)
-                            .style(Style::default().fg(Color::Cyan))
-                            .data(
-                                waterfall_frequencies
-                                    .iter()
-                                    .zip(&waterfall_data.last().unwrap().1)
-                                    .map(|(x, y)| (*x as f64, *y as f64))
-                                    .collect::<Vec<_>>()
-                                    .as_ref(),
-                            )])
-                        .render(&mut f, main_area[1]);
-                } else {
-                    render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
+                    rect = render_spectrum_plot(
+                        &mut f,
+                        rect,
+                        &waterfall_frequencies,
+                        &waterfall_data,
+                        waterfall_zoom,
+                    );
                 }
+
+                render_map_view(&mut f, rect, &station, ground_tracks, sat_footprint);
 
                 if show_logs {
                     render_log_view(&mut f, log_area, logs);
@@ -421,6 +348,75 @@ impl Ui {
 
         Ok(())
     }
+}
+
+fn render_spectrum_plot<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    frequencies: &[f32],
+    data: &[(f32, Vec<f32>)],
+    zoom: f32,
+) -> Rect {
+    let area = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Min(0)].as_ref())
+        .split(rect);
+
+    Chart::default()
+        .block(
+            Block::default()
+                .title(&format!("Spectrum (x{:.*})", 1, zoom))
+                .title_style(Style::default().fg(Color::Yellow))
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::DarkGray)),
+        )
+        .x_axis(
+            Axis::default()
+                .title("Frequency (kHz)")
+                .title_style(Style::default().fg(Color::DarkGray))
+                .style(Style::default().fg(Color::DarkGray))
+                .bounds([
+                    (*frequencies.first().unwrap() / zoom) as f64,
+                    (*frequencies.last().unwrap() / zoom) as f64,
+                ])
+                .labels(&[
+                    &format!("{}", (frequencies.first().unwrap() / 1000.0 / zoom).floor()),
+                    &format!(
+                        "{}",
+                        (frequencies.first().unwrap() / 1000.0 / 2.0 / zoom).floor()
+                    ),
+                    &format!("{}", 0),
+                    &format!(
+                        "{}",
+                        (frequencies.last().unwrap() / 1000.0 / 2.0 / zoom).ceil()
+                    ),
+                    &format!("{}", (frequencies.last().unwrap() / 1000.0 / zoom).ceil()),
+                ])
+                .labels_style(Style::default().fg(Color::DarkGray)),
+        )
+        .y_axis(
+            Axis::default()
+                .title("Power (dB)")
+                .title_style(Style::default().fg(Color::DarkGray))
+                .style(Style::default().fg(Color::DarkGray))
+                .bounds([-100.0, 0.0])
+                .labels(&["-100", "-50", "0"])
+                .labels_style(Style::default().fg(Color::DarkGray)),
+        )
+        .datasets(&[Dataset::default()
+            .marker(Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .data(
+                frequencies
+                    .iter()
+                    .zip(&data.last().unwrap().1)
+                    .map(|(x, y)| (*x as f64, *y as f64))
+                    .collect::<Vec<_>>()
+                    .as_ref(),
+            )])
+        .render(t, area[1]);
+
+    area[0]
 }
 
 fn render_map_view<T: Backend>(
