@@ -18,7 +18,7 @@ lazy_static! {
 
 struct WaterfallFile {
     fft_size: u64,
-    observation: u64,
+    _observation: u64,
     reader: BufReader<File>,
 }
 
@@ -26,7 +26,7 @@ pub struct WaterfallWatcher {
     event_tx: SyncSender<Event>,
     file: Option<WaterfallFile>,
     watcher_rx: Receiver<RawEvent>,
-    watcher: notify::RecommendedWatcher,
+    _watcher: notify::RecommendedWatcher,
 }
 
 impl WaterfallWatcher {
@@ -40,7 +40,7 @@ impl WaterfallWatcher {
             event_tx,
             file: None,
             watcher_rx,
-            watcher,
+            _watcher: watcher,
         })
     }
 
@@ -111,7 +111,7 @@ impl WaterfallWatcher {
 
                                         self.file = Some(WaterfallFile {
                                             fft_size,
-                                            observation,
+                                            _observation: observation,
                                             reader,
                                         });
                                     }

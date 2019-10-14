@@ -62,6 +62,7 @@ fn run() -> Result<()> {
 
     state.update_ground_tracks(settings.ui.ground_track_num);
 
+    let waterfall_path = settings.waterfall_path.clone();
     let local_stations: Vec<_> = settings
         .stations
         .iter()
@@ -84,17 +85,21 @@ fn run() -> Result<()> {
                 }
             }
         });
+    }
 
-        // watch for waterfall if enabled
+    // watch for waterfall if enabled
+    if let Some(waterfall_path) = waterfall_path {
+        log::info!("Starting waterfall watcher for {}", waterfall_path);
+
         let tx = tui.sender();
-        let mut waterfall_watcher = WaterfallWatcher::new("/tmp/.satnogs/data/", tx)?;
+        let mut waterfall_watcher = WaterfallWatcher::new(&waterfall_path, tx)?;
 
         thread::spawn(move || {
             if let Err(err) = waterfall_watcher.run() {
                 log::error!("Waterfall watcher stopped with error: {}", err);
             }
         });
-    }
+    };
 
     tui.run()
 }
@@ -183,6 +188,23 @@ fn settings() -> Result<Settings> {
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of log verbosity"),
+        )
+        .arg(
+            Arg::with_name("waterfall_path")
+                .long("waterfall-path")
+                .value_name("PATH")
+                .takes_value(true)
+                .help(
+                    "Enables the spectrum and waterfall plot if set to the SatNOGS \
+                     client data path (/tmp/.satnogs/data/)",
+                ),
+        )
+        .arg(
+            Arg::with_name("waterfall_zoom")
+                .long("waterfall-zoom")
+                .value_name("FACTOR")
+                .takes_value(true)
+                .help("Zooms the spectrum and waterfall plot (1.0 - 10.0)"),
         );
 
     let matches = app.get_matches();
@@ -244,6 +266,21 @@ fn settings() -> Result<Settings> {
 
     if let Ok(orbits) = value_t!(matches.value_of("orbits"), u8) {
         settings.ui.ground_track_num = std::cmp::max(1, orbits);
+    }
+
+    if let Ok(waterfall_path) = value_t!(matches.value_of("waterfall_path"), String) {
+        settings.waterfall_path = Some(waterfall_path);
+    }
+
+    if let Ok(mut waterfall_zoom) = value_t!(matches.value_of("waterfall_zoom"), f32) {
+        if waterfall_zoom < 1.0 {
+            waterfall_zoom = 1.0;
+        }
+        if waterfall_zoom > 10.0 {
+            waterfall_zoom = 10.0;
+        }
+
+        settings.waterfall_zoom = waterfall_zoom;
     }
 
     Ok(settings)

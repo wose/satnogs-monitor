@@ -167,6 +167,7 @@ impl Ui {
         let state = &self.state;
         let waterfall_data = &self.waterfall_data;
         let waterfall_frequencies = &self.waterfall_frequencies;
+        let waterfall_zoom = self.settings.waterfall_zoom;
 
         self.terminal
             .draw(|mut f| {
@@ -197,13 +198,13 @@ impl Ui {
                         .direction(Direction::Vertical)
                         .constraints([Constraint::Percentage(50), Constraint::Min(0)].as_ref())
                         .split(body[1]);
- 
+
                     render_map_view(&mut f, main_area[0], &station, ground_tracks, sat_footprint);
 
                     Chart::default()
                         .block(
                             Block::default()
-                                .title("Spectrum")
+                                .title(&format!("Spectrum (x{:.*})", 1, waterfall_zoom))
                                 .title_style(Style::default().fg(Color::Yellow))
                                 .borders(Borders::TOP)
                                 .border_style(Style::default().fg(Color::DarkGray)),
@@ -213,13 +214,44 @@ impl Ui {
                                 .title("Frequency (kHz)")
                                 .title_style(Style::default().fg(Color::DarkGray))
                                 .style(Style::default().fg(Color::DarkGray))
-                                .bounds([*waterfall_frequencies.first().unwrap() as f64, *waterfall_frequencies.last().unwrap() as f64])
+                                .bounds([
+                                    (*waterfall_frequencies.first().unwrap() / waterfall_zoom)
+                                        as f64,
+                                    (*waterfall_frequencies.last().unwrap() / waterfall_zoom)
+                                        as f64,
+                                ])
                                 .labels(&[
-                                    &format!("{}", (waterfall_frequencies.first().unwrap() / 1000.0).floor()),
-                                    &format!("{}", (waterfall_frequencies.first().unwrap() / 1000.0 / 2.0).floor()),
+                                    &format!(
+                                        "{}",
+                                        (waterfall_frequencies.first().unwrap()
+                                            / 1000.0
+                                            / waterfall_zoom)
+                                            .floor()
+                                    ),
+                                    &format!(
+                                        "{}",
+                                        (waterfall_frequencies.first().unwrap()
+                                            / 1000.0
+                                            / 2.0
+                                            / waterfall_zoom)
+                                            .floor()
+                                    ),
                                     &format!("{}", 0),
-                                    &format!("{}", (waterfall_frequencies.last().unwrap() / 1000.0 / 2.0).ceil()),
-                                    &format!("{}", (waterfall_frequencies.last().unwrap() / 1000.0).ceil()),
+                                    &format!(
+                                        "{}",
+                                        (waterfall_frequencies.last().unwrap()
+                                            / 1000.0
+                                            / 2.0
+                                            / waterfall_zoom)
+                                            .ceil()
+                                    ),
+                                    &format!(
+                                        "{}",
+                                        (waterfall_frequencies.last().unwrap()
+                                            / 1000.0
+                                            / waterfall_zoom)
+                                            .ceil()
+                                    ),
                                 ])
                                 .labels_style(Style::default().fg(Color::DarkGray)),
                         )
@@ -232,25 +264,18 @@ impl Ui {
                                 .labels(&["-100", "-50", "0"])
                                 .labels_style(Style::default().fg(Color::DarkGray)),
                         )
-                        .datasets(&[
-                            Dataset::default()
-                                .marker(Marker::Braille)
-                                .style(Style::default().fg(Color::Cyan))
-                                .data(
-                                    waterfall_frequencies
-                                        .iter()
-                                        .zip(
-                                            &waterfall_data
-                                                .last()
-                                                .unwrap()
-                                                .1
-                                        )
-                                        .map(|(x, y)| (*x as f64, *y as f64))
-                                        .collect::<Vec<_>>().as_ref()
-                                ),
-                        ])
+                        .datasets(&[Dataset::default()
+                            .marker(Marker::Braille)
+                            .style(Style::default().fg(Color::Cyan))
+                            .data(
+                                waterfall_frequencies
+                                    .iter()
+                                    .zip(&waterfall_data.last().unwrap().1)
+                                    .map(|(x, y)| (*x as f64, *y as f64))
+                                    .collect::<Vec<_>>()
+                                    .as_ref(),
+                            )])
                         .render(&mut f, main_area[1]);
-                    
                 } else {
                     render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
                 }
@@ -275,6 +300,16 @@ impl Ui {
             Key(Char('\t')) => self.next_station(),
             Key(Ctrl('\t')) => self.prev_station(),
             Key(Char('q')) => self.shutdown = true,
+            Key(Char('+')) => {
+                if self.settings.waterfall_zoom < 10.0 {
+                    self.settings.waterfall_zoom += 0.5;
+                }
+            }
+            Key(Char('-')) => {
+                if self.settings.waterfall_zoom > 1.0 {
+                    self.settings.waterfall_zoom -= 0.5;
+                }
+            }
             Key(key) => {
                 debug!("Key Event: {:?}", key);
             }
@@ -311,8 +346,8 @@ impl Ui {
                 self.handle_tick();
             }
             Event::WaterfallCreated(obs_id, frequencies) => {
-                self.waterfall_obs_id= obs_id;
-                self.waterfall_frequencies= frequencies;
+                self.waterfall_obs_id = obs_id;
+                self.waterfall_frequencies = frequencies;
             }
             Event::WaterfallData(seconds, data) => {
                 self.waterfall_data.push((seconds, data));
