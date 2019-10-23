@@ -800,7 +800,7 @@ fn render_log_view<T: Backend>(t: &mut Frame<T>, rect: Rect, logs: &LogQueue) {
     let block = Block::default()
         .borders(Borders::RIGHT | Borders::LEFT | Borders::TOP)
         .border_style(Style::default().fg(COL_DARK_CYAN))
-        .style(Style::default().modifier(tui::style::Modifier::Reset))
+        .style(Style::default().modifier(tui::style::Modifier::empty()))
         .title("Log")
         .title_style(Style::default().fg(Color::Yellow));
 
