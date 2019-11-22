@@ -5,6 +5,7 @@ use std::convert::From;
 
 use crate::demoddata::DemodData;
 
+#[derive(Default)]
 pub struct ObservationFilter {
     ground_station: String,
     start: String,
@@ -14,12 +15,7 @@ pub struct ObservationFilter {
 
 impl<'a> ObservationFilter {
     pub fn new() -> Self {
-        ObservationFilter {
-            ground_station: "".into(),
-            start: "".into(),
-            end: "".into(),
-            norad_cat_id: "".into(),
-        }
+        Default::default()
     }
 
     pub fn ground_station(mut self, id: u64) -> Self {

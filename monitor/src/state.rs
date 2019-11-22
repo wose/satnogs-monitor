@@ -58,9 +58,8 @@ impl State {
                 .stations
                 .keys()
                 .skip_while(|id| **id != self.active_station)
-                .skip(1)
-                .next()
-                .unwrap_or(self.stations.keys().next().unwrap());
+                .nth(1)
+                .unwrap_or_else(|| self.stations.keys().next().unwrap());
         }
     }
 
@@ -71,9 +70,8 @@ impl State {
                 .keys()
                 .rev()
                 .skip_while(|id| **id != self.active_station)
-                .skip(1)
-                .next()
-                .unwrap_or(self.stations.keys().rev().next().unwrap());
+                .nth(1)
+                .unwrap_or_else(|| self.stations.keys().rev().next().unwrap());
         }
     }
 }

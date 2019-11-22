@@ -53,7 +53,7 @@ impl<'a> Widget for InfoBar<'a> {
         let space_between_tabs = 3;
 
         let mut x = area.left();
-        for (_, station) in &self.state.stations {
+        for station in self.state.stations.values() {
             let style = match station.info.status {
                 StationStatus::Online => self.online_style,
                 StationStatus::Testing => self.testing_style,

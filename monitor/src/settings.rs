@@ -51,7 +51,7 @@ impl Settings {
                     .config_dir()
                     .join("config.toml")
                     .to_str()
-                    .ok_or(ConfigError::Message("Invalid project dir".to_string()))?,
+                    .ok_or_else(|| ConfigError::Message("Invalid project dir".to_string()))?,
             );
             settings.merge(file.required(false))?;
         }

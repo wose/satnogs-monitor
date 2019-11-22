@@ -96,13 +96,13 @@ impl Ui {
             last_job_update: std::time::Instant::now(),
             logs: CircularQueue::with_capacity(100),
             network: satnogs::Connection::new(sender.clone(), settings.api_endpoint.clone()),
-            sender: sender,
+            sender,
             settings,
             show_logs: false,
             shutdown: false,
             size: Rect::default(),
-            state: state,
-            terminal: terminal,
+            state,
+            terminal,
             ticks: 0,
         };
 
@@ -262,7 +262,7 @@ impl Ui {
     fn update_jobs(&mut self) {
         trace!("Requesting jobs update");
 
-        for (id, _) in &self.state.stations {
+        for id in self.state.stations.keys() {
             self.network.send(satnogs::Command::GetJobs(*id)).unwrap();
         }
         self.last_job_update = std::time::Instant::now();
@@ -331,7 +331,7 @@ fn render_map_view<T: Backend>(
                 ctx.layer();
                 let mut ground_track = Points::default();
                 // plot future orbits first so the current orbit will be drawn on top
-                ground_track.color = Color::Cyan;;
+                ground_track.color = Color::Cyan;
                 ground_track.coords =
                     &job.vessel.ground_track[job.vessel.ground_track.len() / ground_tracks..];
                 ctx.draw(&ground_track);
@@ -737,12 +737,12 @@ fn render_future_jobs_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &S
     if station.jobs.is_empty() {
         jobs_info.push(Text::styled("None\n", Style::default().fg(Color::Red)));
     } else {
-        let mut jobs_rev = station
+        let jobs_rev = station
             .jobs
             .iter()
             .take((rect.height as usize).saturating_sub(2) / 2);
 
-        while let Some(job) = jobs_rev.next() {
+        for job in jobs_rev {
             let delta_t = Utc::now() - job.start();
             jobs_info.extend_from_slice(&[
                 Text::styled(

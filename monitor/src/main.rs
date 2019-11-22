@@ -50,7 +50,7 @@ fn run() -> Result<()> {
         state.add_station(
             client
                 .station_info(station.satnogs_id)
-                .map(|si| Station::new(si))?,
+                .map(Station::new)?,
         );
 
         if state.active_station == 0 {
@@ -203,7 +203,7 @@ fn settings() -> Result<Settings> {
                 (*sc).local = true;
             } else {
                 let mut sc = StationConfig::new(id);
-                sc.local = true;;
+                sc.local = true;
                 settings.stations.push(sc);
             }
         }

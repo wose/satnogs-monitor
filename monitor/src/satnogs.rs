@@ -73,7 +73,7 @@ impl Connection {
         });
 
         Self {
-            command_tx: command_tx,
+            command_tx,
         }
     }
 

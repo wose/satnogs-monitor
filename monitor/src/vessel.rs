@@ -39,8 +39,8 @@ impl Vessel {
             polar_track,
             id,
             sat: predict.sat,
-            tle: tle,
-            qth: qth,
+            tle,
+            qth,
         }
     }
 
@@ -66,7 +66,7 @@ impl Vessel {
 
     pub fn update_footprint(&mut self) {
         use std::f64::consts::PI;
-        let xkmper = 6.378135E3;
+        let xkmper = 6.378_135E3;
         let footprint = 12756.33 * (xkmper / (xkmper + self.sat.alt_km)).acos();
         let beta = (0.5 * footprint) / xkmper;
 

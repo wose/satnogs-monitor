@@ -10,13 +10,13 @@ pub struct Client {
 impl Client {
     pub fn new(url: &str) -> Result<Self, Error> {
         let client = RestClient::new(url)?;
-        Ok(Client { client: client })
+        Ok(Client { client })
     }
 
     pub fn with_api_key(url: &str, api_key: &str) -> Result<Self, Error> {
         let mut client = RestClient::new(url)?;
         client.set_header("Authorization", &format!("Token {}", api_key))?;
-        Ok(Client { client: client })
+        Ok(Client { client })
     }
 
     pub fn jobs(&mut self, id: u64) -> Result<Vec<Job>, Error> {

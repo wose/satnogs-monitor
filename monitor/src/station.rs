@@ -14,7 +14,7 @@ pub struct Station {
 impl Station {
     pub fn new(info: snc::StationInfo) -> Self {
         Station {
-            info: info,
+            info,
             jobs: vec![],
             sys_info: Default::default(),
         }
