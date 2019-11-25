@@ -12,7 +12,7 @@ pub struct Waterfall<'a> {
     
 }
 
-impl<'a> Widget for Waterfall {
+impl<'a> Widget for Waterfall<'a> {
     fn draw(&mut self, area: Rect, buf: &mut Buffer) {
         
     }
