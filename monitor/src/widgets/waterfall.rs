@@ -78,8 +78,8 @@ impl<'a> Widget for Waterfall<'a> {
                         )
                         .map(|(first, second)|
                              Style::default()
-                             .fg(VIRIDIS[((255.0 / 100.0 * first).abs().floor() as usize).min(255)])
-                             .bg(VIRIDIS[((255.0 / 100.0 * second).abs().floor() as usize).min(255)])
+                             .fg(VIRIDIS[255 - ((255.0 / 100.0 * first).abs().floor() as usize).min(255)])
+                             .bg(VIRIDIS[255 - ((255.0 / 100.0 * second).abs().floor() as usize).min(255)])
                         )
                         .collect::<Vec<_>>()
                 } else {
@@ -87,7 +87,7 @@ impl<'a> Widget for Waterfall<'a> {
                         .iter()
                         .map(|db| {
                             Style::default()
-                                .fg(VIRIDIS[((255.0 / 100.0 * db).abs().floor() as usize).min(255)])
+                                .fg(VIRIDIS[255 - ((255.0 / 100.0 * db).abs().floor() as usize).min(255)])
                         })
                         .collect::<Vec<_>>()
                 };
