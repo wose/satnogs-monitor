@@ -162,9 +162,6 @@ where
         let bin_size = self.frequencies.len() / (area.width as usize);
 
         const PIX: &str = "▀";
-        // draw the legend
-        // text left of legend
-        // legend 2 chars width dB top or bottom of legend
 
         let lines = area.height as usize * 2;
         let columns = area.width;
@@ -177,13 +174,14 @@ where
             .chunks(2)
             .enumerate()
         {
-            if let Some((timestamp, row_data)) = chunk.iter().next() {
+            let mut chunk = chunk.iter();
+            if let Some((timestamp, row_data)) = chunk.next() {
                 let columns = row_data
                     .chunks(bin_size)
                     .map(|chunk| chunk.iter().fold(-100f32, |res, val| res.max(*val)))
                     .collect::<Vec<f32>>();
 
-                let styles = if let Some((timestamp, row_data)) = chunk.iter().next() {
+                let styles = if let Some((timestamp, row_data)) = chunk.next() {
                     columns
                         .iter()
                         .zip(
@@ -227,10 +225,6 @@ where
                     );
                 }
             }
-            //let datapoints = bins.len();
-            //let columns = bins.chunks(5).map(|chunk| chunk.iter().sum::<f32>() / datapoints as f32).collect::<Vec<f32>>();
         }
-
-        for data_points in self.data.iter().rev().take(lines) {}
     }
 }
