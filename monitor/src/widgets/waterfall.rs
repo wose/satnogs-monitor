@@ -56,7 +56,6 @@ impl<'a> Widget for Waterfall<'a> {
 
         let datapoints = self.frequencies.len();
         for (row, chunk) in rows
-            .rev()
             .collect::<Vec<&(f32, Vec<f32>)>>()
             .chunks(2)
             .enumerate()
