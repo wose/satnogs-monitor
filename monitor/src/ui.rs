@@ -27,7 +27,7 @@ use crate::satnogs;
 use crate::settings::Settings;
 use crate::state::State;
 use crate::station::Station;
-use crate::widgets::{InfoBar, Waterfall};
+use crate::widgets::{InfoBar, Waterfall, WaterfallLegend};
 
 use crate::Result;
 
@@ -370,6 +370,12 @@ fn render_waterfall<T: Backend>(t: &mut Frame<T>, rect: Rect, frequencies: &[f32
                 .borders(Borders::TOP)
                 .border_style(Style::default().fg(Color::DarkGray)), 
         )
+        .legend(WaterfallLegend::default()
+                .labels(&[
+                    "-100", "-50", "0"
+                ])
+                .labels_style(Style::default().fg(Color::DarkGray))
+        )
         .render(t, area[1]);
 
     area[0]
@@ -425,7 +431,8 @@ fn render_spectrum_plot<T: Backend>(
                 .title_style(Style::default().fg(Color::DarkGray))
                 .style(Style::default().fg(Color::DarkGray))
                 .bounds([-100.0, 0.0])
-                .labels(&["-100", "-50", "0"])
+                // TODO: align the spectrum plot with the waterfall
+                .labels(&["  -100", "   -50", "     0"])
                 .labels_style(Style::default().fg(Color::DarkGray)),
         )
         .datasets(&[Dataset::default()
