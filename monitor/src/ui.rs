@@ -27,7 +27,7 @@ use crate::satnogs;
 use crate::settings::Settings;
 use crate::state::State;
 use crate::station::Station;
-use crate::widgets::InfoBar;
+use crate::widgets::{InfoBar, Waterfall};
 
 use crate::Result;
 
@@ -196,6 +196,12 @@ impl Ui {
                 // render main area on the right
                 rect = body[1];
                 if !waterfall_data.is_empty() {
+                    rect = render_waterfall(
+                        &mut f,
+                        rect,
+                        &waterfall_frequencies,
+                        &waterfall_data);
+
                     rect = render_spectrum_plot(
                         &mut f,
                         rect,
@@ -350,6 +356,25 @@ impl Ui {
     }
 }
 
+fn render_waterfall<T: Backend>(t: &mut Frame<T>, rect: Rect, frequencies: &[f32], data: &[(f32, Vec<f32>)]) -> Rect {
+    let area = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(75), Constraint::Min(0)].as_ref())
+        .split(rect);
+
+    Waterfall::new(frequencies, data)
+        .block(
+            Block::default()
+                .title("Waterfall")
+                .title_style(Style::default().fg(Color::Yellow))
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::DarkGray)), 
+        )
+        .render(t, area[1]);
+
+    area[0]
+}
+
 fn render_spectrum_plot<T: Backend>(
     t: &mut Frame<T>,
     rect: Rect,
@@ -359,7 +384,7 @@ fn render_spectrum_plot<T: Backend>(
 ) -> Rect {
     let area = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Percentage(75), Constraint::Min(0)].as_ref())
         .split(rect);
 
     Chart::default()
