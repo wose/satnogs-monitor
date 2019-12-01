@@ -16,7 +16,7 @@ pub struct WaterfallLayout {
 #[derive(Default)]
 pub struct WaterfallLegend<'a, L>
 where
-    L: AsRef<str> + 'a
+    L: AsRef<str> + 'a,
 {
     title: Option<&'a str>,
     title_style: Style,
@@ -24,7 +24,7 @@ where
     labels_style: Style,
 }
 
-impl <'a, L> WaterfallLegend<'a, L>
+impl<'a, L> WaterfallLegend<'a, L>
 where
     L: AsRef<str>,
 {
@@ -42,12 +42,12 @@ where
 #[derive(Default)]
 pub struct Waterfall<'a, L>
 where
-    L: AsRef<str> + 'a
+    L: AsRef<str> + 'a,
 {
     data: &'a [(f32, Vec<f32>)],
     frequencies: &'a [f32],
     block: Option<Block<'a>>,
-    legend: Option<WaterfallLegend<'a, L>>
+    legend: Option<WaterfallLegend<'a, L>>,
 }
 
 impl<'a, L> Waterfall<'a, L>
@@ -122,9 +122,14 @@ where
         let layout = self.layout(area);
 
         if let Some(area) = layout.legend_area {
+            let color_step = 255.0 / (area.height as f32 * 2.0);
             for line in 0..area.height {
-                let top_index = ((255.0 - (255.0 / (area.height  as f32 * 2.0) * line as f32 * 2.0).abs().floor()) as usize).min(255);
-                let bottom_index = ((255.0 - (255.0 / (area.height  as f32 * 2.0) * line  as f32 * 2.0 + 1.0).abs().floor()) as usize).min(255);
+                let top_index =
+                    ((255.0 - (color_step * line as f32 * 2.0).abs().floor()) as usize).min(255);
+                let bottom_index = ((255.0
+                    - (color_step * line as f32 * 2.0 + color_step).abs().floor())
+                    as usize)
+                    .min(255);
 
                 buf.set_string(
                     area.left() + 4,
@@ -132,7 +137,7 @@ where
                     "▀▀",
                     Style::default()
                         .fg(VIRIDIS[top_index])
-                        .bg(VIRIDIS[bottom_index])
+                        .bg(VIRIDIS[bottom_index]),
                 );
             }
 
@@ -152,7 +157,6 @@ where
                 }
             }
         }
-
 
         let area = layout.data_area;
         let bin_size = self.frequencies.len() / (area.width as usize);
@@ -188,18 +192,20 @@ where
                                 .map(|chunk| chunk.iter().fold(-100f32, |res, val| res.max(*val)))
                                 .collect::<Vec<f32>>(),
                         )
-                        .map(|(first, second)|
-                             Style::default()
-                             .fg(VIRIDIS[255 - ((255.0 / 100.0 * first).abs().floor() as usize).min(255)])
-                             .bg(VIRIDIS[255 - ((255.0 / 100.0 * second).abs().floor() as usize).min(255)])
-                        )
+                        .map(|(first, second)| {
+                            Style::default()
+                                .fg(VIRIDIS[255
+                                    - ((255.0 / 100.0 * first).abs().floor() as usize).min(255)])
+                                .bg(VIRIDIS[255
+                                    - ((255.0 / 100.0 * second).abs().floor() as usize).min(255)])
+                        })
                         .collect::<Vec<_>>()
                 } else {
                     columns
                         .iter()
                         .map(|db| {
-                            Style::default()
-                                .fg(VIRIDIS[255 - ((255.0 / 100.0 * db).abs().floor() as usize).min(255)])
+                            Style::default().fg(VIRIDIS
+                                [255 - ((255.0 / 100.0 * db).abs().floor() as usize).min(255)])
                         })
                         .collect::<Vec<_>>()
                 };
@@ -207,7 +213,12 @@ where
                 // we do not interpolate between pixels so we just zoom slightly in and display
                 // the area.width pixel in the center of the waterfall
                 let start = (styles.len() - area.width as usize) / 2;
-                for (column, style) in styles.iter().skip(start).take(area.width  as usize).enumerate() {
+                for (column, style) in styles
+                    .iter()
+                    .skip(start)
+                    .take(area.width as usize)
+                    .enumerate()
+                {
                     buf.set_string(
                         area.left() + column as u16,
                         area.top() + row as u16,
