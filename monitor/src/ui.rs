@@ -51,10 +51,9 @@ pub struct Ui {
     state: State,
     terminal: Terminal<TermBackend>,
     ticks: u32,
-
-    waterfall_obs_id: u64,
-    waterfall_frequencies: Vec<f32>,
     waterfall_data: Vec<(f32, Vec<f32>)>,
+    waterfall_frequencies: Vec<f32>,
+    waterfall_obs_id: u64,
 }
 
 impl Ui {
@@ -164,7 +163,9 @@ impl Ui {
         let show_logs = self.show_logs;
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
+        let spectrum_plot = self.settings.ui.spectrum_plot;
         let state = &self.state;
+        let waterfall = self.settings.ui.waterfall;
         let waterfall_data = &self.waterfall_data;
         let waterfall_frequencies = &self.waterfall_frequencies;
         let waterfall_zoom = self.settings.waterfall_zoom;
@@ -196,19 +197,73 @@ impl Ui {
                 // render main area on the right
                 rect = body[1];
                 if !waterfall_data.is_empty() {
-                    rect = render_waterfall(
-                        &mut f,
-                        rect,
-                        &waterfall_frequencies,
-                        &waterfall_data);
+                    let layout = Layout::default().direction(Direction::Vertical);
 
-                    rect = render_spectrum_plot(
-                        &mut f,
-                        rect,
-                        &waterfall_frequencies,
-                        &waterfall_data,
-                        waterfall_zoom,
-                    );
+                    rect = match (spectrum_plot, waterfall) {
+                        (true, false) => {
+                            let area = layout
+                                .constraints(
+                                    [Constraint::Percentage(50), Constraint::Min(0)].as_ref(),
+                                )
+                                .split(rect);
+
+                            render_spectrum_plot(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                                waterfall_zoom,
+                            );
+
+                            area[0]
+                        }
+                        (false, true) => {
+                            let area = layout
+                                .constraints(
+                                    [Constraint::Percentage(50), Constraint::Min(0)].as_ref(),
+                                )
+                                .split(rect);
+
+                            render_waterfall(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                            );
+
+                            area[0]
+                        }
+
+                        (true, true) => {
+                            let area = layout
+                                .constraints(
+                                    [
+                                        Constraint::Percentage(50),
+                                        Constraint::Percentage(25),
+                                        Constraint::Min(0),
+                                    ]
+                                    .as_ref(),
+                                )
+                                .split(rect);
+
+                            render_spectrum_plot(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                                waterfall_zoom,
+                            );
+                            render_waterfall(
+                                &mut f,
+                                area[2],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                            );
+
+                            area[0]
+                        }
+                        _ => rect,
+                    };
                 }
 
                 render_map_view(&mut f, rect, &station, ground_tracks, sat_footprint);
@@ -356,29 +411,27 @@ impl Ui {
     }
 }
 
-fn render_waterfall<T: Backend>(t: &mut Frame<T>, rect: Rect, frequencies: &[f32], data: &[(f32, Vec<f32>)]) -> Rect {
-    let area = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(75), Constraint::Min(0)].as_ref())
-        .split(rect);
-
-    Waterfall::new(frequencies, data)
+fn render_waterfall<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    _frequencies: &[f32],
+    data: &[(f32, Vec<f32>)],
+) {
+    Waterfall::default()
+        .data(data)
         .block(
             Block::default()
                 .title("Waterfall")
                 .title_style(Style::default().fg(Color::Yellow))
                 .borders(Borders::TOP)
-                .border_style(Style::default().fg(Color::DarkGray)), 
+                .border_style(Style::default().fg(Color::DarkGray)),
         )
-        .legend(WaterfallLegend::default()
-                .labels(&[
-                    "-100", "-50", "0"
-                ])
-                .labels_style(Style::default().fg(Color::DarkGray))
+        .legend(
+            WaterfallLegend::default()
+                .labels(&["-100", "-50", "0"])
+                .labels_style(Style::default().fg(Color::DarkGray)),
         )
-        .render(t, area[1]);
-
-    area[0]
+        .render(t, rect);
 }
 
 fn render_spectrum_plot<T: Backend>(
@@ -387,12 +440,7 @@ fn render_spectrum_plot<T: Backend>(
     frequencies: &[f32],
     data: &[(f32, Vec<f32>)],
     zoom: f32,
-) -> Rect {
-    let area = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(75), Constraint::Min(0)].as_ref())
-        .split(rect);
-
+) {
     Chart::default()
         .block(
             Block::default()
@@ -446,9 +494,7 @@ fn render_spectrum_plot<T: Backend>(
                     .collect::<Vec<_>>()
                     .as_ref(),
             )])
-        .render(t, area[1]);
-
-    area[0]
+        .render(t, rect);
 }
 
 fn render_map_view<T: Backend>(

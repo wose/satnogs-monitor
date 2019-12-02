@@ -62,7 +62,7 @@ fn run() -> Result<()> {
 
     state.update_ground_tracks(settings.ui.ground_track_num);
 
-    let waterfall_path = settings.waterfall_path.clone();
+    let data_path = settings.data_path.clone();
     let local_stations: Vec<_> = settings
         .stations
         .iter()
@@ -88,11 +88,11 @@ fn run() -> Result<()> {
     }
 
     // watch for waterfall if enabled
-    if let Some(waterfall_path) = waterfall_path {
-        log::info!("Starting waterfall watcher for {}", waterfall_path);
+    if let Some(data_path) = data_path {
+        log::info!("Starting waterfall watcher for {}", data_path);
 
         let tx = tui.sender();
-        let mut waterfall_watcher = WaterfallWatcher::new(&waterfall_path, tx)?;
+        let mut waterfall_watcher = WaterfallWatcher::new(&data_path, tx)?;
 
         thread::spawn(move || {
             if let Err(err) = waterfall_watcher.run() {
@@ -190,8 +190,8 @@ fn settings() -> Result<Settings> {
                 .help("Sets the level of log verbosity"),
         )
         .arg(
-            Arg::with_name("waterfall_path")
-                .long("waterfall-path")
+            Arg::with_name("data_path")
+                .long("data-path")
                 .value_name("PATH")
                 .takes_value(true)
                 .help(
@@ -268,8 +268,8 @@ fn settings() -> Result<Settings> {
         settings.ui.ground_track_num = std::cmp::max(1, orbits);
     }
 
-    if let Ok(waterfall_path) = value_t!(matches.value_of("waterfall_path"), String) {
-        settings.waterfall_path = Some(waterfall_path);
+    if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {
+        settings.data_path = Some(data_path);
     }
 
     if let Ok(mut waterfall_zoom) = value_t!(matches.value_of("waterfall_zoom"), f32) {

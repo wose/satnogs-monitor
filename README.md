@@ -31,7 +31,7 @@ Note: the list is by no means complete or in any particular order.
 - [ ] network overview
 - [ ] GUI
 - [ ] cross platform
-- [ ] waterfall stream of current observation
+- [X] waterfall stream of current observation
 - [ ] audio stream of current observation
 
 ## Dependencies

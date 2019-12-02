@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- spectrum plot
+- waterfall widget (requires a true color terminal emulator)
+- Command line parameter --data-path to specify the satnogs-client data path
+
 ## [0.2.0] - 2019-10-07
 ### Added
 - Command line parameter -a|--api to specify the SatNOGS network api endpoint.

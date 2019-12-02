@@ -3,7 +3,7 @@ use super::viridis::VIRIDIS;
 use tui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, Widget},
 };
 
@@ -18,8 +18,6 @@ pub struct WaterfallLegend<'a, L>
 where
     L: AsRef<str> + 'a,
 {
-    title: Option<&'a str>,
-    title_style: Style,
     labels: Option<&'a [L]>,
     labels_style: Style,
 }
@@ -45,7 +43,6 @@ where
     L: AsRef<str> + 'a,
 {
     data: &'a [(f32, Vec<f32>)],
-    frequencies: &'a [f32],
     block: Option<Block<'a>>,
     legend: Option<WaterfallLegend<'a, L>>,
 }
@@ -54,15 +51,6 @@ impl<'a, L> Waterfall<'a, L>
 where
     L: AsRef<str>,
 {
-    pub fn new(frequencies: &'a [f32], data: &'a [(f32, Vec<f32>)]) -> Self {
-        Waterfall {
-            legend: None,
-            data,
-            frequencies,
-            block: None,
-        }
-    }
-
     pub fn block(mut self, block: Block<'a>) -> Self {
         self.block = Some(block);
         self
@@ -85,11 +73,9 @@ where
         }
 
         let mut x = area.left();
-        let mut y = area.bottom() - 1;
+        let y = area.bottom() - 1;
 
         if self.legend.is_some() && y > area.top() {
-            // -100 ##
-            // 7 chars
             layout.legend_area = Some(Rect::new(x, area.top(), x + 7, y - area.top() + 1));
             x += 7;
         }
@@ -158,30 +144,31 @@ where
             }
         }
 
+        if self.data.is_empty() {
+            return;
+        }
+
         let area = layout.data_area;
-        let bin_size = self.frequencies.len() / (area.width as usize);
+        let bin_size = self.data[0].1.len() / (area.width as usize);
 
         const PIX: &str = "▀";
 
         let lines = area.height as usize * 2;
-        let columns = area.width;
-
         let rows = self.data.iter().rev().take(lines);
 
-        let datapoints = self.frequencies.len();
         for (row, chunk) in rows
             .collect::<Vec<&(f32, Vec<f32>)>>()
             .chunks(2)
             .enumerate()
         {
             let mut chunk = chunk.iter();
-            if let Some((timestamp, row_data)) = chunk.next() {
+            if let Some((_timestamp, row_data)) = chunk.next() {
                 let columns = row_data
                     .chunks(bin_size)
                     .map(|chunk| chunk.iter().fold(-100f32, |res, val| res.max(*val)))
                     .collect::<Vec<f32>>();
 
-                let styles = if let Some((timestamp, row_data)) = chunk.next() {
+                let styles = if let Some((_timestamp, row_data)) = chunk.next() {
                     columns
                         .iter()
                         .zip(
