@@ -14,6 +14,8 @@ use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
 use tui::Frame;
 use tui::Terminal;
 
+use tui::widgets::{Axis, Chart, Dataset, Marker};
+
 use std::f64::consts;
 use std::io;
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
@@ -25,7 +27,7 @@ use crate::satnogs;
 use crate::settings::Settings;
 use crate::state::State;
 use crate::station::Station;
-use crate::widgets::InfoBar;
+use crate::widgets::{InfoBar, Waterfall, WaterfallLegend};
 
 use crate::Result;
 
@@ -49,6 +51,9 @@ pub struct Ui {
     state: State,
     terminal: Terminal<TermBackend>,
     ticks: u32,
+    waterfall_data: Vec<(f32, Vec<f32>)>,
+    waterfall_frequencies: Vec<f32>,
+    waterfall_obs_id: u64,
 }
 
 impl Ui {
@@ -104,6 +109,9 @@ impl Ui {
             state,
             terminal,
             ticks: 0,
+            waterfall_obs_id: 0,
+            waterfall_frequencies: vec![],
+            waterfall_data: vec![],
         };
 
         Ok(ui)
@@ -155,7 +163,12 @@ impl Ui {
         let show_logs = self.show_logs;
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
+        let spectrum_plot = self.settings.ui.spectrum_plot;
         let state = &self.state;
+        let waterfall = self.settings.ui.waterfall;
+        let waterfall_data = &self.waterfall_data;
+        let waterfall_frequencies = &self.waterfall_frequencies;
+        let waterfall_zoom = self.settings.waterfall_zoom;
 
         self.terminal
             .draw(|mut f| {
@@ -181,7 +194,79 @@ impl Ui {
                     )
                     .render(&mut f, rect);
 
-                render_map_view(&mut f, body[1], &station, ground_tracks, sat_footprint);
+                // render main area on the right
+                rect = body[1];
+                if !waterfall_data.is_empty() {
+                    let layout = Layout::default().direction(Direction::Vertical);
+
+                    rect = match (spectrum_plot, waterfall) {
+                        (true, false) => {
+                            let area = layout
+                                .constraints(
+                                    [Constraint::Percentage(50), Constraint::Min(0)].as_ref(),
+                                )
+                                .split(rect);
+
+                            render_spectrum_plot(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                                waterfall_zoom,
+                            );
+
+                            area[0]
+                        }
+                        (false, true) => {
+                            let area = layout
+                                .constraints(
+                                    [Constraint::Percentage(50), Constraint::Min(0)].as_ref(),
+                                )
+                                .split(rect);
+
+                            render_waterfall(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                            );
+
+                            area[0]
+                        }
+
+                        (true, true) => {
+                            let area = layout
+                                .constraints(
+                                    [
+                                        Constraint::Percentage(50),
+                                        Constraint::Percentage(25),
+                                        Constraint::Min(0),
+                                    ]
+                                    .as_ref(),
+                                )
+                                .split(rect);
+
+                            render_spectrum_plot(
+                                &mut f,
+                                area[1],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                                waterfall_zoom,
+                            );
+                            render_waterfall(
+                                &mut f,
+                                area[2],
+                                &waterfall_frequencies,
+                                &waterfall_data,
+                            );
+
+                            area[0]
+                        }
+                        _ => rect,
+                    };
+                }
+
+                render_map_view(&mut f, rect, &station, ground_tracks, sat_footprint);
 
                 if show_logs {
                     render_log_view(&mut f, log_area, logs);
@@ -203,6 +288,16 @@ impl Ui {
             Key(Char('\t')) => self.next_station(),
             Key(Ctrl('\t')) => self.prev_station(),
             Key(Char('q')) => self.shutdown = true,
+            Key(Char('+')) => {
+                if self.settings.waterfall_zoom < 10.0 {
+                    self.settings.waterfall_zoom += 0.5;
+                }
+            }
+            Key(Char('-')) => {
+                if self.settings.waterfall_zoom > 1.0 {
+                    self.settings.waterfall_zoom -= 0.5;
+                }
+            }
             Key(key) => {
                 debug!("Key Event: {:?}", key);
             }
@@ -237,6 +332,18 @@ impl Ui {
             }
             Event::Tick => {
                 self.handle_tick();
+            }
+            Event::WaterfallCreated(obs_id, frequencies) => {
+                self.waterfall_obs_id = obs_id;
+                self.waterfall_frequencies = frequencies;
+            }
+            Event::WaterfallData(seconds, data) => {
+                self.waterfall_data.push((seconds, data));
+            }
+            Event::WaterfallClosed(_obs_id) => {
+                self.waterfall_data.clear();
+                self.waterfall_frequencies.clear();
+                self.waterfall_obs_id = 0;
             }
         }
     }
@@ -304,6 +411,92 @@ impl Ui {
     }
 }
 
+fn render_waterfall<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    _frequencies: &[f32],
+    data: &[(f32, Vec<f32>)],
+) {
+    Waterfall::default()
+        .data(data)
+        .block(
+            Block::default()
+                .title("Waterfall")
+                .title_style(Style::default().fg(Color::Yellow))
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::DarkGray)),
+        )
+        .legend(
+            WaterfallLegend::default()
+                .labels(&["-100", "-50", "0"])
+                .labels_style(Style::default().fg(Color::DarkGray)),
+        )
+        .render(t, rect);
+}
+
+fn render_spectrum_plot<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    frequencies: &[f32],
+    data: &[(f32, Vec<f32>)],
+    zoom: f32,
+) {
+    Chart::default()
+        .block(
+            Block::default()
+                .title(&format!("Spectrum (x{:.*})", 1, zoom))
+                .title_style(Style::default().fg(Color::Yellow))
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::DarkGray)),
+        )
+        .x_axis(
+            Axis::default()
+                .title("Frequency (kHz)")
+                .title_style(Style::default().fg(Color::DarkGray))
+                .style(Style::default().fg(Color::DarkGray))
+                .bounds([
+                    (*frequencies.first().unwrap() / zoom) as f64,
+                    (*frequencies.last().unwrap() / zoom) as f64,
+                ])
+                .labels(&[
+                    &format!("{}", (frequencies.first().unwrap() / 1000.0 / zoom).floor()),
+                    &format!(
+                        "{}",
+                        (frequencies.first().unwrap() / 1000.0 / 2.0 / zoom).floor()
+                    ),
+                    &format!("{}", 0),
+                    &format!(
+                        "{}",
+                        (frequencies.last().unwrap() / 1000.0 / 2.0 / zoom).ceil()
+                    ),
+                    &format!("{}", (frequencies.last().unwrap() / 1000.0 / zoom).ceil()),
+                ])
+                .labels_style(Style::default().fg(Color::DarkGray)),
+        )
+        .y_axis(
+            Axis::default()
+                .title("Power (dB)")
+                .title_style(Style::default().fg(Color::DarkGray))
+                .style(Style::default().fg(Color::DarkGray))
+                .bounds([-100.0, 0.0])
+                // TODO: align the spectrum plot with the waterfall
+                .labels(&["  -100", "   -50", "     0"])
+                .labels_style(Style::default().fg(Color::DarkGray)),
+        )
+        .datasets(&[Dataset::default()
+            .marker(Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .data(
+                frequencies
+                    .iter()
+                    .zip(&data.last().unwrap().1)
+                    .map(|(x, y)| (*x as f64, *y as f64))
+                    .collect::<Vec<_>>()
+                    .as_ref(),
+            )])
+        .render(t, rect);
+}
+
 fn render_map_view<T: Backend>(
     t: &mut Frame<T>,
     rect: Rect,
@@ -321,11 +514,10 @@ fn render_map_view<T: Backend>(
             ctx.print(station.info.lng, station.info.lat, DOT, Color::LightCyan);
 
             if let Some(job) = station.jobs.iter().next() {
-                let marker = format!("■─{}", job.vessel_name());
                 ctx.print(
                     job.sat().lon_deg,
                     job.sat().lat_deg,
-                    marker,
+                    format!("■─{}", job.vessel_name()),
                     Color::LightRed,
                 );
                 ctx.layer();
@@ -800,7 +992,6 @@ fn render_log_view<T: Backend>(t: &mut Frame<T>, rect: Rect, logs: &LogQueue) {
     let block = Block::default()
         .borders(Borders::RIGHT | Borders::LEFT | Borders::TOP)
         .border_style(Style::default().fg(COL_DARK_CYAN))
-        .style(Style::default().modifier(tui::style::Modifier::empty()))
         .title("Log")
         .title_style(Style::default().fg(Color::Yellow));
 

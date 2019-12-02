@@ -31,7 +31,7 @@ Note: the list is by no means complete or in any particular order.
 - [ ] network overview
 - [ ] GUI
 - [ ] cross platform
-- [ ] waterfall stream of current observation
+- [X] waterfall stream of current observation
 - [ ] audio stream of current observation
 
 ## Dependencies
@@ -60,20 +60,15 @@ possible. See [Install Rust](https://www.rust-lang.org/en-US/install.html).
 rustup install stable
 ```
 
-If you want to build the monitor on the rpi you'll have to settle with version
-`1.37.0` for now:
-
-```
-rustup install 1.37.0
-```
-
-For more information see rust-lang/rust#62896
-
-### A true color terminal
+### A terminal
 
 While other terminals will be supported in the future, the screenshot was taken
 using [alacritty](https://github.com/jwilm/alacritty) with the [Lucy
-Tewi](https://github.com/lucy/tewi-font) font.
+Tewi](https://github.com/lucy/tewi-font) font. Any
+[nerd-fonts](https://github.com/ryanoasis/nerd-fonts) font should work as well.
+You'll need a terminal emulator which supports trur colors for the waterfall
+widget to look nice.
+
 
 Check [the wiki](https://github.com/wose/satnogs-monitor/wiki) for infos on
 other terminals with and without Xorg.

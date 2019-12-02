@@ -26,6 +26,8 @@ impl StationConfig {
 pub struct UiConfig {
     pub ground_track_num: u8,
     pub sat_footprint: bool,
+    pub spectrum_plot: bool,
+    pub waterfall: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,6 +36,8 @@ pub struct Settings {
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub stations: Vec<StationConfig>,
+    pub data_path: Option<String>,
+    pub waterfall_zoom: f32,
 }
 
 impl Settings {
@@ -43,7 +47,10 @@ impl Settings {
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("ui.sat_footprint", true)?;
+        settings.set_default("ui.spectrum_plot", false)?;
+        settings.set_default("ui.waterfall", false)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;
+        settings.set_default("waterfall_zoom", 1.0)?;
 
         if let Some(project_dirs) = ProjectDirs::from("org", "SatNOGS", "satnogs-monitor") {
             let file = File::with_name(

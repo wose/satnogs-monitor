@@ -15,12 +15,14 @@ mod station;
 mod sysinfo;
 mod ui;
 mod vessel;
+mod waterfall;
 mod widgets;
 
 use self::event::Event;
 use self::settings::{Settings, StationConfig};
 use self::station::Station;
 use self::sysinfo::SysInfo;
+use self::waterfall::WaterfallWatcher;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
@@ -60,6 +62,7 @@ fn run() -> Result<()> {
 
     state.update_ground_tracks(settings.ui.ground_track_num);
 
+    let data_path = settings.data_path.clone();
     let local_stations: Vec<_> = settings
         .stations
         .iter()
@@ -83,6 +86,20 @@ fn run() -> Result<()> {
             }
         });
     }
+
+    // watch for waterfall if enabled
+    if let Some(data_path) = data_path {
+        log::info!("Starting waterfall watcher for {}", data_path);
+
+        let tx = tui.sender();
+        let mut waterfall_watcher = WaterfallWatcher::new(&data_path, tx)?;
+
+        thread::spawn(move || {
+            if let Err(err) = waterfall_watcher.run() {
+                log::error!("Waterfall watcher stopped with error: {}", err);
+            }
+        });
+    };
 
     tui.run()
 }
@@ -171,6 +188,33 @@ fn settings() -> Result<Settings> {
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of log verbosity"),
+        )
+        .arg(
+            Arg::with_name("data_path")
+                .long("data-path")
+                .value_name("PATH")
+                .takes_value(true)
+                .help(
+                    "Enables the spectrum and waterfall plot if set to the SatNOGS \
+                     client data path (/tmp/.satnogs/data/)",
+                ),
+        )
+        .arg(
+            Arg::with_name("spectrum")
+                .long("spectrum")
+                .help("Enables the spectrum plot")
+        )
+        .arg(
+            Arg::with_name("waterfall")
+                .long("waterfall")
+                .help("Enables the waterfall plot")
+        )
+        .arg(
+            Arg::with_name("waterfall_zoom")
+                .long("waterfall-zoom")
+                .value_name("FACTOR")
+                .takes_value(true)
+                .help("Zooms the spectrum and waterfall plot (1.0 - 10.0)"),
         );
 
     let matches = app.get_matches();
@@ -232,6 +276,24 @@ fn settings() -> Result<Settings> {
 
     if let Ok(orbits) = value_t!(matches.value_of("orbits"), u8) {
         settings.ui.ground_track_num = std::cmp::max(1, orbits);
+    }
+
+    if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {
+        settings.data_path = Some(data_path);
+    }
+
+    settings.ui.spectrum_plot |= matches.is_present("spectrum");
+    settings.ui.waterfall |= matches.is_present("waterfall");
+
+    if let Ok(mut waterfall_zoom) = value_t!(matches.value_of("waterfall_zoom"), f32) {
+        if waterfall_zoom < 1.0 {
+            waterfall_zoom = 1.0;
+        }
+        if waterfall_zoom > 10.0 {
+            waterfall_zoom = 10.0;
+        }
+
+        settings.waterfall_zoom = waterfall_zoom;
     }
 
     Ok(settings)

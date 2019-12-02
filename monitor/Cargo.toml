@@ -5,24 +5,29 @@ authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
 [dependencies]
-chrono = "0.4.9"
+byteorder = "1.3.2"
+chrono = "0.4.10"
 circular-queue = "0.2.2"
 clap = "2.33.0"
 config = "0.9.3"
+crossbeam-channel = "0.3.9"
 directories = "2.0.2"
-failure = "0.1.5"
-failure_derive = "0.1.5"
+failure = "0.1.6"
+failure_derive = "0.1.6"
 gpredict = { git = "https://github.com/wose/rust-gpredict.git" }
-libc = "0.2.62"
+lazy_static = "1.4.0"
+libc = "0.2.66"
 log = { version = "0.4.8", features = ["std"] }
+notify = "=5.0.0-pre.1"
 read_color = "1.0.0"
+regex = "1.3.1"
 satnogs-db-client = { path = "../satnogs-db-client" }
 satnogs-network-client = { path = "../satnogs-network-client" }
-serde = "1.0.101"
-serde_derive = "1.0.101"
-signal-hook = "0.1.10"
+serde = "1.0.103"
+serde_derive = "1.0.103"
+signal-hook = "0.1.12"
 systemstat = { git = "https://github.com/myfreeweb/systemstat.git" }
-termion = "1.5.3"
+termion = "1.5.4"
 time = "0.1.42"
 tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}
 unicode-width = "0.1.6"
