@@ -200,6 +200,16 @@ fn settings() -> Result<Settings> {
                 ),
         )
         .arg(
+            Arg::with_name("spectrum")
+                .long("spectrum")
+                .help("Enables the spectrum plot")
+        )
+        .arg(
+            Arg::with_name("waterfall")
+                .long("waterfall")
+                .help("Enables the waterfall plot")
+        )
+        .arg(
             Arg::with_name("waterfall_zoom")
                 .long("waterfall-zoom")
                 .value_name("FACTOR")
@@ -271,6 +281,9 @@ fn settings() -> Result<Settings> {
     if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {
         settings.data_path = Some(data_path);
     }
+
+    settings.ui.spectrum_plot |= matches.is_present("spectrum");
+    settings.ui.waterfall |= matches.is_present("waterfall");
 
     if let Ok(mut waterfall_zoom) = value_t!(matches.value_of("waterfall_zoom"), f32) {
         if waterfall_zoom < 1.0 {

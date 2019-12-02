@@ -47,7 +47,7 @@ impl Settings {
         settings.set_default("log_level", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("ui.sat_footprint", true)?;
-        settings.set_default("ui.spectrum_plot", true)?;
+        settings.set_default("ui.spectrum_plot", false)?;
         settings.set_default("ui.waterfall", false)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;
         settings.set_default("waterfall_zoom", 1.0)?;

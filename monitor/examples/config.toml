@@ -28,7 +28,7 @@
 # the satnogs-client data path
 #
 # enable spectrum plot
-#spectrum_plot = true
+#spectrum_plot = false
 #
 # enable waterfall (you'll need a true color terminal)
-#waterfall = true
+#waterfall = false
