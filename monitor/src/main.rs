@@ -200,6 +200,20 @@ fn settings() -> Result<Settings> {
                 ),
         )
         .arg(
+            Arg::with_name("db_min")
+                .long("db-min")
+                .value_name("DB")
+                .takes_value(true)
+                .help("Sets the lower dB bound of the spectrum and waterfall plot (-100)")
+        )
+        .arg(
+            Arg::with_name("db_max")
+                .long("db-max")
+                .value_name("DB")
+                .takes_value(true)
+                .help("Sets the upper dB bound of the spectrum and waterfall plot (0)")
+        )
+        .arg(
             Arg::with_name("spectrum")
                 .long("spectrum")
                 .help("Enables the spectrum plot")
@@ -280,6 +294,14 @@ fn settings() -> Result<Settings> {
 
     if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {
         settings.data_path = Some(data_path);
+    }
+
+    if let Ok(db_min) = value_t!(matches.value_of("db_min"), f32) {
+        settings.ui.db_min = db_min;
+    }
+
+    if let Ok(db_max) = value_t!(matches.value_of("db_max"), f32) {
+        settings.ui.db_max = db_max;
     }
 
     settings.ui.spectrum_plot |= matches.is_present("spectrum");

@@ -164,6 +164,7 @@ impl Ui {
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
         let spectrum_plot = self.settings.ui.spectrum_plot;
+        let db_range = [self.settings.ui.db_min, self.settings.ui.db_max];
         let state = &self.state;
         let waterfall = self.settings.ui.waterfall;
         let waterfall_data = &self.waterfall_data;
@@ -212,6 +213,7 @@ impl Ui {
                                 area[1],
                                 &waterfall_frequencies,
                                 &waterfall_data,
+                                db_range,
                                 waterfall_zoom,
                             );
 
@@ -229,6 +231,7 @@ impl Ui {
                                 area[1],
                                 &waterfall_frequencies,
                                 &waterfall_data,
+                                db_range,
                             );
 
                             area[0]
@@ -251,6 +254,7 @@ impl Ui {
                                 area[1],
                                 &waterfall_frequencies,
                                 &waterfall_data,
+                                db_range,
                                 waterfall_zoom,
                             );
                             render_waterfall(
@@ -258,6 +262,7 @@ impl Ui {
                                 area[2],
                                 &waterfall_frequencies,
                                 &waterfall_data,
+                                db_range,
                             );
 
                             area[0]
@@ -416,9 +421,11 @@ fn render_waterfall<T: Backend>(
     rect: Rect,
     _frequencies: &[f32],
     data: &[(f32, Vec<f32>)],
+    db_range: [f32; 2],
 ) {
     Waterfall::default()
         .data(data)
+        .bounds(db_range)
         .block(
             Block::default()
                 .title("Waterfall")
@@ -428,7 +435,11 @@ fn render_waterfall<T: Backend>(
         )
         .legend(
             WaterfallLegend::default()
-                .labels(&["-100", "-50", "0"])
+                .labels(&[
+                    &format!("{:>4.0}", db_range[0]),
+                    &format!("{:>4.0}", (db_range[0] + db_range[1]) / 2.0),
+                    &format!("{:>4.0}", db_range[1])
+                ])
                 .labels_style(Style::default().fg(Color::DarkGray)),
         )
         .render(t, rect);
@@ -439,6 +450,7 @@ fn render_spectrum_plot<T: Backend>(
     rect: Rect,
     frequencies: &[f32],
     data: &[(f32, Vec<f32>)],
+    db_range: [f32; 2],
     zoom: f32,
 ) {
     Chart::default()
@@ -478,9 +490,12 @@ fn render_spectrum_plot<T: Backend>(
                 .title("Power (dB)")
                 .title_style(Style::default().fg(Color::DarkGray))
                 .style(Style::default().fg(Color::DarkGray))
-                .bounds([-100.0, 0.0])
-                // TODO: align the spectrum plot with the waterfall
-                .labels(&["  -100", "   -50", "     0"])
+                .bounds([db_range[0] as f64, db_range[1] as f64])
+                .labels(&[
+                    &format!("{:>6.0}", db_range[0]),
+                    &format!("{:>6.0}", (db_range[0] + db_range[1]) / 2.0),
+                    &format!("{:>6.0}", db_range[1])
+                ])
                 .labels_style(Style::default().fg(Color::DarkGray)),
         )
         .datasets(&[Dataset::default()

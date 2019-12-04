@@ -17,6 +17,10 @@
 #local = false
 
 [ui]
+# dB range of the spectrum and waterfall plot
+#db_min = -100.0
+#db_max = 0.0
+
 # Number of orbits plotted on the map.
 #ground_track_num = 3
 

@@ -13,13 +13,25 @@ pub struct WaterfallLayout {
     data_area: Rect,
 }
 
-#[derive(Default)]
+//#[derive(Default)]
 pub struct WaterfallLegend<'a, L>
 where
     L: AsRef<str> + 'a,
 {
     labels: Option<&'a [L]>,
     labels_style: Style,
+}
+
+impl<'a, L> Default for WaterfallLegend<'a, L>
+where
+    L: AsRef<str>,
+{
+    fn default() -> Self {
+        WaterfallLegend {
+            labels: None,
+            labels_style: Default::default(),
+        }
+    }
 }
 
 impl<'a, L> WaterfallLegend<'a, L>
@@ -37,14 +49,28 @@ where
     }
 }
 
-#[derive(Default)]
 pub struct Waterfall<'a, L>
 where
     L: AsRef<str> + 'a,
 {
-    data: &'a [(f32, Vec<f32>)],
     block: Option<Block<'a>>,
+    bounds: [f32; 2],
+    data: &'a [(f32, Vec<f32>)],
     legend: Option<WaterfallLegend<'a, L>>,
+}
+
+impl<'a, L> Default for Waterfall<'a, L>
+where
+    L: AsRef<str> + 'a,
+{
+    fn default() -> Self {
+        Waterfall {
+            block: None,
+            bounds: [-100.0, 0.0],
+            data: Default::default(),
+            legend: None,
+        }
+    }
 }
 
 impl<'a, L> Waterfall<'a, L>
@@ -53,6 +79,11 @@ where
 {
     pub fn block(mut self, block: Block<'a>) -> Self {
         self.block = Some(block);
+        self
+    }
+
+    pub fn bounds(mut self, bounds: [f32; 2]) -> Self {
+        self.bounds = bounds;
         self
     }
 
@@ -156,6 +187,8 @@ where
         let lines = area.height as usize * 2;
         let rows = self.data.iter().rev().take(lines);
 
+        let db_range = self.bounds[1] - self.bounds[0];
+
         for (row, chunk) in rows
             .collect::<Vec<&(f32, Vec<f32>)>>()
             .chunks(2)
@@ -165,7 +198,7 @@ where
             if let Some((_timestamp, row_data)) = chunk.next() {
                 let columns = row_data
                     .chunks(bin_size)
-                    .map(|chunk| chunk.iter().fold(-100f32, |res, val| res.max(*val)))
+                    .map(|chunk| chunk.iter().fold(self.bounds[0], |res, val| res.max(*val)))
                     .collect::<Vec<f32>>();
 
                 let styles = if let Some((_timestamp, row_data)) = chunk.next() {
@@ -174,15 +207,15 @@ where
                         .zip(
                             row_data
                                 .chunks(bin_size)
-                                .map(|chunk| chunk.iter().fold(-100f32, |res, val| res.max(*val)))
+                                .map(|chunk| chunk.iter().fold(self.bounds[0], |res, val| res.max(*val)))
                                 .collect::<Vec<f32>>(),
                         )
                         .map(|(first, second)| {
                             Style::default()
                                 .fg(VIRIDIS[255
-                                    - ((255.0 / 100.0 * first).abs().floor() as usize).min(255)])
+                                    - ((255.0 / db_range * first).abs().floor() as usize).min(255)])
                                 .bg(VIRIDIS[255
-                                    - ((255.0 / 100.0 * second).abs().floor() as usize).min(255)])
+                                    - ((255.0 / db_range * second).abs().floor() as usize).min(255)])
                         })
                         .collect::<Vec<_>>()
                 } else {
@@ -190,7 +223,7 @@ where
                         .iter()
                         .map(|db| {
                             Style::default().fg(VIRIDIS
-                                [255 - ((255.0 / 100.0 * db).abs().floor() as usize).min(255)])
+                                [255 - ((255.0 / db_range * db).abs().floor() as usize).min(255)])
                         })
                         .collect::<Vec<_>>()
                 };

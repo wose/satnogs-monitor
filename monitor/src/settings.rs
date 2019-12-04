@@ -24,6 +24,8 @@ impl StationConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct UiConfig {
+    pub db_min: f32,
+    pub db_max: f32,
     pub ground_track_num: u8,
     pub sat_footprint: bool,
     pub spectrum_plot: bool,
@@ -45,6 +47,8 @@ impl Settings {
         let mut settings = Config::new();
         settings.set_default("api_endpoint", "https://network.satnogs.org/api/")?;
         settings.set_default("log_level", 0)?;
+        settings.set_default("ui.db_min", -100.0)?;
+        settings.set_default("ui.db_max", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
         settings.set_default("ui.sat_footprint", true)?;
         settings.set_default("ui.spectrum_plot", false)?;
