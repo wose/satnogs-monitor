@@ -13,7 +13,6 @@ pub struct WaterfallLayout {
     data_area: Rect,
 }
 
-//#[derive(Default)]
 pub struct WaterfallLegend<'a, L>
 where
     L: AsRef<str> + 'a,
@@ -207,7 +206,9 @@ where
                         .zip(
                             row_data
                                 .chunks(bin_size)
-                                .map(|chunk| chunk.iter().fold(self.bounds[0], |res, val| res.max(*val)))
+                                .map(|chunk| {
+                                    chunk.iter().fold(self.bounds[0], |res, val| res.max(*val))
+                                })
                                 .collect::<Vec<f32>>(),
                         )
                         .map(|(first, second)| {
@@ -215,7 +216,8 @@ where
                                 .fg(VIRIDIS[255
                                     - ((255.0 / db_range * first).abs().floor() as usize).min(255)])
                                 .bg(VIRIDIS[255
-                                    - ((255.0 / db_range * second).abs().floor() as usize).min(255)])
+                                    - ((255.0 / db_range * second).abs().floor() as usize)
+                                        .min(255)])
                         })
                         .collect::<Vec<_>>()
                 } else {

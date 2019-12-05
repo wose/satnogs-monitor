@@ -49,11 +49,7 @@ fn run() -> Result<()> {
     let mut state = state::State::new();
 
     for station in &settings.stations {
-        state.add_station(
-            client
-                .station_info(station.satnogs_id)
-                .map(Station::new)?,
-        );
+        state.add_station(client.station_info(station.satnogs_id).map(Station::new)?);
 
         if state.active_station == 0 {
             state.active_station = station.satnogs_id;
@@ -204,24 +200,24 @@ fn settings() -> Result<Settings> {
                 .long("db-min")
                 .value_name("DB")
                 .takes_value(true)
-                .help("Sets the lower dB bound of the spectrum and waterfall plot (-100)")
+                .help("Sets the lower dB bound of the spectrum and waterfall plot (-100)"),
         )
         .arg(
             Arg::with_name("db_max")
                 .long("db-max")
                 .value_name("DB")
                 .takes_value(true)
-                .help("Sets the upper dB bound of the spectrum and waterfall plot (0)")
+                .help("Sets the upper dB bound of the spectrum and waterfall plot (0)"),
         )
         .arg(
             Arg::with_name("spectrum")
                 .long("spectrum")
-                .help("Enables the spectrum plot")
+                .help("Enables the spectrum plot"),
         )
         .arg(
             Arg::with_name("waterfall")
                 .long("waterfall")
-                .help("Enables the waterfall plot")
+                .help("Enables the waterfall plot"),
         )
         .arg(
             Arg::with_name("waterfall_zoom")

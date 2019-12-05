@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spectrum and waterfall plot
 - ui config options `db_min` and `db_max` to set the dB range of the spectrum
   and waterfall plot
+- display current azimuth and elevation of the current observations vessel
 
 ## [0.3.0] - 2019-12-02
 ### Added

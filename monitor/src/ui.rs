@@ -438,7 +438,7 @@ fn render_waterfall<T: Backend>(
                 .labels(&[
                     &format!("{:>4.0}", db_range[0]),
                     &format!("{:>4.0}", (db_range[0] + db_range[1]) / 2.0),
-                    &format!("{:>4.0}", db_range[1])
+                    &format!("{:>4.0}", db_range[1]),
                 ])
                 .labels_style(Style::default().fg(Color::DarkGray)),
         )
@@ -494,7 +494,7 @@ fn render_spectrum_plot<T: Backend>(
                 .labels(&[
                     &format!("{:>6.0}", db_range[0]),
                     &format!("{:>6.0}", (db_range[0] + db_range[1]) / 2.0),
-                    &format!("{:>6.0}", db_range[1])
+                    &format!("{:>6.0}", db_range[1]),
                 ])
                 .labels_style(Style::default().fg(Color::DarkGray)),
         )
@@ -910,9 +910,21 @@ fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Sta
                 Style::default().fg(COL_WHITE),
             ),
             Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
+            Text::styled("Azimuth      ", Style::default().fg(Color::Cyan)),
+            Text::styled(
+                format!("{:19.3}", job.sat().az_deg),
+                Style::default().fg(COL_WHITE),
+            ),
+            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+            Text::styled("Elevation    ", Style::default().fg(Color::Cyan)),
+            Text::styled(
+                format!("{:19.3}", job.sat().el_deg),
+                Style::default().fg(COL_WHITE),
+            ),
+            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
         ]);
 
-        10
+        12
     };
 
     let area = Layout::default()
