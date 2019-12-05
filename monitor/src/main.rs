@@ -27,8 +27,12 @@ use self::waterfall::WaterfallWatcher;
 type Result<T> = std::result::Result<T, failure::Error>;
 
 #[derive(Debug, Fail)]
-#[fail(display = "No station provided")]
-struct NoStationError;
+enum InitializationError {
+    #[fail(display = "no station provided")]
+    NoStationError,
+    #[fail(display = "invalid dB range min {} >= max {}", db_min, db_max)]
+    InvalidDbRange { db_min: f32, db_max: f32 },
+}
 
 fn main() {
     if let Err(err) = run() {
@@ -277,7 +281,7 @@ fn settings() -> Result<Settings> {
     }
 
     if settings.stations.is_empty() {
-        return Err(NoStationError.into());
+        return Err(InitializationError::NoStationError.into());
     }
 
     // only one entry per station
@@ -298,6 +302,14 @@ fn settings() -> Result<Settings> {
 
     if let Ok(db_max) = value_t!(matches.value_of("db_max"), f32) {
         settings.ui.db_max = db_max;
+    }
+
+    if settings.ui.db_min >= settings.ui.db_max {
+        return Err(InitializationError::InvalidDbRange {
+            db_min: settings.ui.db_min,
+            db_max: settings.ui.db_max,
+        }
+        .into());
     }
 
     settings.ui.spectrum_plot |= matches.is_present("spectrum");
