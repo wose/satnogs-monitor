@@ -214,18 +214,27 @@ where
                         .map(|(first, second)| {
                             Style::default()
                                 .fg(VIRIDIS[255
-                                    - ((255.0 / db_range * first).abs().floor() as usize).min(255)])
-                                .bg(VIRIDIS[255
-                                    - ((255.0 / db_range * second).abs().floor() as usize)
+                                    - ((255.0 / db_range * (first - self.bounds[1])).abs().floor()
+                                        as usize)
                                         .min(255)])
+                                .bg(
+                                    VIRIDIS[255
+                                        - ((255.0 / db_range * (second - self.bounds[1]))
+                                            .abs()
+                                            .floor()
+                                            as usize)
+                                            .min(255)],
+                                )
                         })
                         .collect::<Vec<_>>()
                 } else {
                     columns
                         .iter()
                         .map(|db| {
-                            Style::default().fg(VIRIDIS
-                                [255 - ((255.0 / db_range * db).abs().floor() as usize).min(255)])
+                            Style::default().fg(VIRIDIS[255
+                                - ((255.0 / db_range * (db - self.bounds[1])).abs().floor()
+                                    as usize)
+                                    .min(255)])
                         })
                         .collect::<Vec<_>>()
                 };
