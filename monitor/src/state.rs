@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, HashMap};
 pub struct State {
     pub active_station: u64,
     pub stations: BTreeMap<u64, Station>,
+    pub rotator_position: Option<(f64, f64)>,
     pub vessels: HashMap<u64, Vessel>,
 }
 
@@ -15,6 +16,7 @@ impl State {
     pub fn new() -> Self {
         State {
             active_station: 0,
+            rotator_position: None,
             stations: BTreeMap::new(),
             vessels: HashMap::new(),
         }

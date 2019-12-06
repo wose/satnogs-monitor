@@ -183,7 +183,7 @@ impl Ui {
                 if let Some(job) = station.jobs.iter().next() {
                     rect = render_polar_plot(&mut f, rect, &job);
                 }
-                rect = render_satellite_view(&mut f, rect, &station);
+                rect = render_satellite_view(&mut f, rect, state);
                 rect = render_future_jobs_view(&mut f, rect, &station);
 
                 // to create the rest of the border we add an empty paragraph
@@ -325,6 +325,9 @@ impl Ui {
             }
             Event::Log((level, message)) => {
                 self.logs.push((Utc::now(), level, message));
+            }
+            Event::RotatorPosition(azimuth, elevation) => {
+                self.state.rotator_position = Some((azimuth, elevation));
             }
             Event::SystemInfo(local_stations, sys_info) => {
                 trace!("Got system info for stations {:?}", local_stations);
@@ -852,8 +855,9 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
     area[1]
 }
 
-fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Station) -> Rect {
+fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, state: &State) -> Rect {
     let mut sat_info = vec![];
+    let station = state.get_active_station();
     let jobs = &station.jobs;
 
     sat_info.push(Text::styled(
@@ -910,19 +914,58 @@ fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Sta
                 Style::default().fg(COL_WHITE),
             ),
             Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Azimuth      ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.sat().az_deg),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Elevation    ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.sat().el_deg),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
         ]);
+
+        if let Some((azimuth, elevation)) = state.rotator_position {
+            let az_diff = (azimuth - job.sat().az_deg).abs();
+            let el_diff = (elevation - job.sat().el_deg).abs();
+
+            let rotator_color = match az_diff.max(el_diff) {
+                delta if delta < 1.0 => COL_WHITE,
+                delta if delta < 5.0 => Color::Yellow,
+                _ => Color::Red,
+            };
+
+            sat_info.extend_from_slice(&[
+                Text::styled("Azimuth     ", Style::default().fg(Color::Cyan)),
+                Text::styled(
+                    format!("{:>8.3}", azimuth),
+                    Style::default().fg(rotator_color),
+                ),
+                Text::styled(" °   ", Style::default().fg(Color::LightGreen)),
+                Text::styled(
+                    format!("{:>7.3}", job.sat().az_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                Text::styled("Elevation   ", Style::default().fg(Color::Cyan)),
+                Text::styled(
+                    format!("{:>8.3}", elevation),
+                    Style::default().fg(rotator_color),
+                ),
+                Text::styled(" °   ", Style::default().fg(Color::LightGreen)),
+                Text::styled(
+                    format!("{:>7.3}", job.sat().el_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+            ]);
+        } else {
+            sat_info.extend_from_slice(&[
+                Text::styled("Azimuth      ", Style::default().fg(Color::Cyan)),
+                Text::styled(
+                    format!("{:>19.3}", job.sat().az_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                Text::styled("Elevation    ", Style::default().fg(Color::Cyan)),
+                Text::styled(
+                    format!("{:>19.3}", job.sat().el_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+            ]);
+        }
 
         12
     };

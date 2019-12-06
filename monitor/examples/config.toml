@@ -8,6 +8,10 @@
 # as it happens
 #data_path = "/tmp/.satnogs/data"
 
+# If you have a rotator setup you can specify your rotctld address here to
+# display the rotators position next to the vessels azimuth and elevation
+#rotctld_address = "127.0.0.1:4533"
+
 #[[stations]]
 # Your stations SatNOGS id
 #satnogs_id = 175

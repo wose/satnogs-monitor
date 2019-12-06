@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ui config options `db_min` and `db_max` to set the dB range of the spectrum
   and waterfall plot
 - display current azimuth and elevation of the current observations vessel
+- display rotator position if rotctld address is set
+- command line parameter `--rotctld-address` to enable rotator monitoring
+- config option `rotctld_address` to enable rotator monitoring
 
 ## [0.3.0] - 2019-12-02
 ### Added

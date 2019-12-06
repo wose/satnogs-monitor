@@ -37,6 +37,7 @@ pub struct Settings {
     pub api_endpoint: String,
     pub log_level: Option<u64>,
     pub ui: UiConfig,
+    pub rotctld_address: Option<String>,
     pub stations: Vec<StationConfig>,
     pub data_path: Option<String>,
     pub waterfall_zoom: f32,

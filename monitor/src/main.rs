@@ -8,6 +8,7 @@ use systemstat::{Platform, System};
 mod event;
 mod job;
 mod logger;
+mod rotctld_client;
 mod satnogs;
 mod settings;
 mod state;
@@ -19,6 +20,7 @@ mod waterfall;
 mod widgets;
 
 use self::event::Event;
+use self::rotctld_client::RotCtldClient;
 use self::settings::{Settings, StationConfig};
 use self::station::Station;
 use self::sysinfo::SysInfo;
@@ -63,6 +65,8 @@ fn run() -> Result<()> {
     state.update_ground_tracks(settings.ui.ground_track_num);
 
     let data_path = settings.data_path.clone();
+    let rotctld_address = settings.rotctld_address.clone();
+
     let local_stations: Vec<_> = settings
         .stations
         .iter()
@@ -100,6 +104,30 @@ fn run() -> Result<()> {
             }
         });
     };
+
+    if let Some(rotctld_address) = rotctld_address {
+        log::info!("Connecting to rotctld at {}", rotctld_address);
+
+        let tx = tui.sender();
+        let mut client = RotCtldClient::new(&rotctld_address)?;
+
+        log::info!("Connected to rotctld at {}", rotctld_address);
+
+        thread::spawn(move || {
+            while let Ok(pos) = client.position() {
+                log::trace!("RotCtl: {} / {}", pos.0, pos.1);
+                match tx.send(Event::RotatorPosition(pos.0, pos.1)) {
+                    Ok(_) => thread::sleep(std::time::Duration::new(1, 0)),
+                    Err(e) => {
+                        log::error!("Failed to send rotator position: {}", e);
+                        break;
+                    }
+                }
+            }
+
+            log::error!("Lost connection to rotctld");
+        });
+    }
 
     tui.run()
 }
@@ -200,6 +228,13 @@ fn settings() -> Result<Settings> {
                 ),
         )
         .arg(
+            Arg::with_name("rotctld_address")
+                .long("rotctld-address")
+                .value_name("IP:PORT")
+                .takes_value(true)
+                .help("Enables rotator monitoring if set to a rotctld address"),
+        )
+        .arg(
             Arg::with_name("db_min")
                 .long("db-min")
                 .value_name("DB")
@@ -290,6 +325,10 @@ fn settings() -> Result<Settings> {
 
     if let Ok(orbits) = value_t!(matches.value_of("orbits"), u8) {
         settings.ui.ground_track_num = std::cmp::max(1, orbits);
+    }
+
+    if let Ok(rotctld_address) = value_t!(matches.value_of("rotctld_address"), String) {
+        settings.rotctld_address = Some(rotctld_address);
     }
 
     if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {

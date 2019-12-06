@@ -7,6 +7,7 @@ pub enum Event {
     Log((Level, String)),
     CommandResponse(Data),
     Resize,
+    RotatorPosition(f64, f64),
     SystemInfo(Vec<u64>, SysInfo),
     Tick,
     WaterfallCreated(u64, Vec<f32>),
