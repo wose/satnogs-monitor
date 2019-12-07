@@ -25,7 +25,7 @@ Note: the list is by no means complete or in any particular order.
 - [X] build debian package for the RPi SatNOGS image
   - Check [releases](https://github.com/wose/satnogs-monitor/releases)
 - [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
-- [ ] rotator state
+- [X] rotator state
 - [X] support multiple stations
 - [ ] theme support
 - [ ] network overview
