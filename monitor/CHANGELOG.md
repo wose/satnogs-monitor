@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- #18 config options `rotator_warn` and `rotator_error` to override the warning
+  and error level for the rotator position display
+  
+### Changed
+- default rotator warning level is now 5.0 deg
+- default rotator error level is now  15.0 deg
+
 ### Fixed
 - Fix #15 dB -> color mapping for waterfall plot
 

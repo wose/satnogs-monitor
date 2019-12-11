@@ -27,6 +27,8 @@ pub struct UiConfig {
     pub db_min: f32,
     pub db_max: f32,
     pub ground_track_num: u8,
+    pub rotator_warn: f64,
+    pub rotator_error: f64,
     pub sat_footprint: bool,
     pub spectrum_plot: bool,
     pub waterfall: bool,
@@ -51,6 +53,8 @@ impl Settings {
         settings.set_default("ui.db_min", -100.0)?;
         settings.set_default("ui.db_max", 0)?;
         settings.set_default("ui.ground_track_num", 3)?;
+        settings.set_default("ui.rotator_warn", 5.0)?;
+        settings.set_default("ui.rotator_error", 15.0)?;
         settings.set_default("ui.sat_footprint", true)?;
         settings.set_default("ui.spectrum_plot", false)?;
         settings.set_default("ui.waterfall", false)?;

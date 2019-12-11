@@ -164,6 +164,7 @@ impl Ui {
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
         let spectrum_plot = self.settings.ui.spectrum_plot;
+        let rot_thresholds = (self.settings.ui.rotator_warn, self.settings.ui.rotator_error);
         let db_range = [self.settings.ui.db_min, self.settings.ui.db_max];
         let state = &self.state;
         let waterfall = self.settings.ui.waterfall;
@@ -183,7 +184,7 @@ impl Ui {
                 if let Some(job) = station.jobs.iter().next() {
                     rect = render_polar_plot(&mut f, rect, &job);
                 }
-                rect = render_satellite_view(&mut f, rect, state);
+                rect = render_satellite_view(&mut f, rect, state, rot_thresholds);
                 rect = render_future_jobs_view(&mut f, rect, &station);
 
                 // to create the rest of the border we add an empty paragraph
@@ -855,7 +856,7 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
     area[1]
 }
 
-fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, state: &State) -> Rect {
+fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, state: &State, rot_thresholds: (f64, f64)) -> Rect {
     let mut sat_info = vec![];
     let station = state.get_active_station();
     let jobs = &station.jobs;
@@ -921,8 +922,8 @@ fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, state: &State
             let el_diff = (elevation - job.sat().el_deg).abs();
 
             let rotator_color = match az_diff.max(el_diff) {
-                delta if delta < 1.0 => COL_WHITE,
-                delta if delta < 5.0 => Color::Yellow,
+                delta if delta < rot_thresholds.0 => COL_WHITE,
+                delta if delta < rot_thresholds.1 => Color::Yellow,
                 _ => Color::Red,
             };
 

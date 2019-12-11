@@ -28,6 +28,11 @@
 # Number of orbits plotted on the map.
 #ground_track_num = 3
 
+# If you enabled the rotator monitoring you can override the warning (yellow) 
+# and error level here.
+#rotator_warn = 5.0
+#rotator_error = 15.0
+
 # draw the satellite footprint on the map
 #sat_footprint = true
 
