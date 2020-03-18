@@ -198,7 +198,7 @@ impl Ui {
 
                 // render main area on the right
                 rect = body[1];
-                if !waterfall_data.is_empty() {
+                if !waterfall_data.is_empty() && !waterfall_frequencies.is_empty() {
                     let layout = Layout::default().direction(Direction::Vertical);
 
                     rect = match (spectrum_plot, waterfall) {

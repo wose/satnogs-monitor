@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix #15 dB -> color mapping for waterfall plot
+- Fix #21 Fixes panic when waterfall data but no waterfall frequency information
+  is available
 
 ## [0.3.1] - 2019-12-06
 ### Added
