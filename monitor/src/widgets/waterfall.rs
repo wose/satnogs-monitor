@@ -54,7 +54,7 @@ where
 {
     block: Option<Block<'a>>,
     bounds: [f32; 2],
-    data: &'a [(f32, Vec<f32>)],
+    data: &'a [(i64, Vec<f32>)],
     legend: Option<WaterfallLegend<'a, L>>,
 }
 
@@ -86,7 +86,7 @@ where
         self
     }
 
-    pub fn data(mut self, data: &'a [(f32, Vec<f32>)]) -> Self {
+    pub fn data(mut self, data: &'a [(i64, Vec<f32>)]) -> Self {
         self.data = data;
         self
     }
@@ -189,7 +189,7 @@ where
         let db_range = self.bounds[1] - self.bounds[0];
 
         for (row, chunk) in rows
-            .collect::<Vec<&(f32, Vec<f32>)>>()
+            .collect::<Vec<&(i64, Vec<f32>)>>()
             .chunks(2)
             .enumerate()
         {

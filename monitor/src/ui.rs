@@ -51,7 +51,7 @@ pub struct Ui {
     state: State,
     terminal: Terminal<TermBackend>,
     ticks: u32,
-    waterfall_data: Vec<(f32, Vec<f32>)>,
+    waterfall_data: Vec<(i64, Vec<f32>)>,
     waterfall_frequencies: Vec<f32>,
     waterfall_obs_id: u64,
 }
@@ -164,7 +164,10 @@ impl Ui {
         let ground_tracks = self.settings.ui.ground_track_num as usize;
         let sat_footprint = self.settings.ui.sat_footprint;
         let spectrum_plot = self.settings.ui.spectrum_plot;
-        let rot_thresholds = (self.settings.ui.rotator_warn, self.settings.ui.rotator_error);
+        let rot_thresholds = (
+            self.settings.ui.rotator_warn,
+            self.settings.ui.rotator_error,
+        );
         let db_range = [self.settings.ui.db_min, self.settings.ui.db_max];
         let state = &self.state;
         let waterfall = self.settings.ui.waterfall;
@@ -424,7 +427,7 @@ fn render_waterfall<T: Backend>(
     t: &mut Frame<T>,
     rect: Rect,
     _frequencies: &[f32],
-    data: &[(f32, Vec<f32>)],
+    data: &[(i64, Vec<f32>)],
     db_range: [f32; 2],
 ) {
     Waterfall::default()
@@ -453,7 +456,7 @@ fn render_spectrum_plot<T: Backend>(
     t: &mut Frame<T>,
     rect: Rect,
     frequencies: &[f32],
-    data: &[(f32, Vec<f32>)],
+    data: &[(i64, Vec<f32>)],
     db_range: [f32; 2],
     zoom: f32,
 ) {
@@ -856,7 +859,12 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
     area[1]
 }
 
-fn render_satellite_view<T: Backend>(t: &mut Frame<T>, rect: Rect, state: &State, rot_thresholds: (f64, f64)) -> Rect {
+fn render_satellite_view<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    state: &State,
+    rot_thresholds: (f64, f64),
+) -> Rect {
     let mut sat_info = vec![];
     let station = state.get_active_station();
     let jobs = &station.jobs;

@@ -31,3 +31,4 @@ termion = "1.5.4"
 time = "0.1.42"
 tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}
 unicode-width = "0.1.6"
+itertools-num = "0.1.3"

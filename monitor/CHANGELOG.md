@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and error level for the rotator position display
   
 ### Changed
+- #22 switch to new waterfall file format (SatNOGS Client >= 1.1)
 - default rotator warning level is now 5.0 deg
 - default rotator error level is now  15.0 deg
 

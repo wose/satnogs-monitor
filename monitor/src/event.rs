@@ -11,6 +11,6 @@ pub enum Event {
     SystemInfo(Vec<u64>, SysInfo),
     Tick,
     WaterfallCreated(u64, Vec<f32>),
-    WaterfallData(f32, Vec<f32>),
+    WaterfallData(i64, Vec<f32>),
     WaterfallClosed(u64),
 }
