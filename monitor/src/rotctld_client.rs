@@ -27,7 +27,13 @@ impl RotCtldClient {
         let mut azimuth = String::new();
         let mut elevation = String::new();
         self.reader.read_line(&mut azimuth)?;
-        self.reader.read_line(&mut elevation)?;
+        if azimuth.starts_with("RPRT") {
+            azimuth.clear();
+            azimuth.push_str("-1");
+            elevation.push_str("-1");
+        } else {
+            self.reader.read_line(&mut elevation)?;
+        }
         let azimuth = azimuth.trim().parse()?;
         let elevation = elevation.trim().parse()?;
 
