@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - default rotator error level is now  15.0 deg
 
 ### Fixed
+- Support rotor performing a reset where no position is returned
 - Fix #15 dB -> color mapping for waterfall plot
 - Fix #21 Fixes panic when waterfall data but no waterfall frequency information
   is available
