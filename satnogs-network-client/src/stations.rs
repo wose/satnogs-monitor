@@ -50,7 +50,6 @@ pub struct StationInfo {
     pub lng: f64,
     /// QTH locator
     pub qthlocator: String,
-    pub location: String,
     /// antennas
     pub antenna: Vec<Antenna>,
     /// date and time the station was created

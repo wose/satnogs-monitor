@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2020-04-29
+### Fixed
+- Update `satnogs-network-client` to work with new station api
+
 ## [0.4.0] - 2020-04-13
 ### Added
 - #18 config options `rotator_warn` and `rotator_error` to override the warning
