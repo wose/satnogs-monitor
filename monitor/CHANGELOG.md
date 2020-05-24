@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- #20 command line parameter `--job-update-interval` and config option
+  `job_update_interval` to control how often we ask the network for new jobs
 
 ## [0.4.1] - 2020-04-29
 ### Fixed

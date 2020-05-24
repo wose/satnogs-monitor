@@ -361,7 +361,7 @@ impl Ui {
     }
 
     fn handle_tick(&mut self) {
-        if self.last_job_update.elapsed().as_secs() >= 600 {
+        if self.last_job_update.elapsed().as_secs() >= self.settings.job_update_interval {
             self.update_jobs();
         }
 

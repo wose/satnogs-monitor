@@ -264,6 +264,13 @@ fn settings() -> Result<Settings> {
                 .value_name("FACTOR")
                 .takes_value(true)
                 .help("Zooms the spectrum and waterfall plot (1.0 - 10.0)"),
+        )
+        .arg(
+            Arg::with_name("job_update_interval")
+                .long("job-update-interval")
+                .value_name("SECONDS")
+                .takes_value(true)
+                .help("Polls the network for new jobs every SECONDS (600)"),
         );
 
     let matches = app.get_matches();
@@ -363,6 +370,10 @@ fn settings() -> Result<Settings> {
         }
 
         settings.waterfall_zoom = waterfall_zoom;
+    }
+
+    if let Ok(job_update_interval) = value_t!(matches.value_of("job_update_interval"), u64) {
+        settings.job_update_interval = job_update_interval;
     }
 
     Ok(settings)

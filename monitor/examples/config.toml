@@ -12,6 +12,11 @@
 # display the rotators position next to the vessels azimuth and elevation
 #rotctld_address = "127.0.0.1:4533"
 
+# The job data is updated every 600 seconds. Since you can't schedule new jobs
+# sooner than now + 10 minutes this guarantees that we don't miss any
+# observations.
+#job_update_interval = 600
+
 #[[stations]]
 # Your stations SatNOGS id
 #satnogs_id = 175
