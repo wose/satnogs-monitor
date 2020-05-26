@@ -101,3 +101,14 @@ Key            | Description
 `\t` | next station
 `q`, `ctrl-c` | quit
 
+## Docker
+
+Building the docker container
+```
+docker build -t satnogs-monitor:latest .
+```
+
+Running
+```
+docker run -it --rm -e STATION_ID=1492 satnogs-monitor:latest
+```
