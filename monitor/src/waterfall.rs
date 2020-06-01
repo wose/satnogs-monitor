@@ -6,7 +6,7 @@ use chrono::{DateTime, FixedOffset};
 use crossbeam_channel::{unbounded, Receiver};
 use itertools_num::linspace;
 use lazy_static::lazy_static;
-use notify::{immediate_watcher, Op, RawEvent, RecursiveMode, Watcher};
+use notify::{immediate_watcher, Event as RawEvent, RecursiveMode, Watcher};
 use regex::Regex;
 
 use std::fs::{File, OpenOptions};
@@ -79,7 +79,7 @@ struct WaterfallFile {
 pub struct WaterfallWatcher {
     event_tx: SyncSender<Event>,
     file: Option<WaterfallFile>,
-    watcher_rx: Receiver<RawEvent>,
+    watcher_rx: Receiver<std::result::Result<RawEvent, notify::Error>>,
     _watcher: notify::RecommendedWatcher,
 }
 
@@ -87,7 +87,7 @@ impl WaterfallWatcher {
     pub fn new(path: &str, event_tx: SyncSender<Event>) -> Result<Self> {
         let (watcher_tx, watcher_rx) = unbounded();
 
-        let mut watcher = immediate_watcher(watcher_tx)?;
+        let mut watcher = immediate_watcher(move |evt| watcher_tx.send(evt).unwrap())?;
         watcher.watch(path, RecursiveMode::NonRecursive)?;
 
         Ok(WaterfallWatcher {
@@ -99,116 +99,57 @@ impl WaterfallWatcher {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        'event_loop: loop {
+        loop {
             match self.watcher_rx.recv() {
-                Ok(event) => {
-                    if let (Ok(op), Some(path)) = (event.op, &event.path) {
-                        // we are only interested in waterfall files
-                        if let Some(obs_id) = RE.captures(path.to_str().unwrap_or("")) {
-                            let observation: u64 = obs_id[1].parse().unwrap();
+                Ok(Ok(event)) => {
+                    let (kind, paths) = (event.kind, &event.paths);
+                    log::trace!("EventKind: {:?} Paths: {:?}", kind, paths);
+                    if paths.is_empty() {
+                        continue;
+                    }
+                    let path = &paths[0];
+                    // we are only interested in waterfall files
+                    if let Some(obs_id) = RE.captures(path.to_str().unwrap_or("")) {
+                        let observation: u64 = obs_id[1].parse().unwrap();
 
+                        match kind {
                             // a new waterfall was created
                             // wait until the header has been written and read it
-                            if op.contains(Op::CREATE) {
-                                match OpenOptions::new().read(true).open(path) {
-                                    Ok(file) => {
-                                        // wait until the header is written
-                                        // if it takes longer than 5 seconds we stop and handle the next
-                                        // event, this also means we're skipping this waterfall
-                                        let now = std::time::SystemTime::now();
-                                        while file.metadata().unwrap().len() < HEADER_SIZE {
-                                            match now.elapsed() {
-                                                Ok(elapsed) if elapsed.as_secs() <= 5 => {
-                                                    thread::sleep(std::time::Duration::from_millis(
-                                                        10,
-                                                    ))
-                                                }
-                                                _ => continue 'event_loop,
-                                            };
-                                        }
-
-                                        let mut reader = BufReader::new(file);
-                                        let header =
-                                            WaterfallHeader::from_reader(&mut reader).unwrap();
-
-                                        let frequencies: Vec<_> = linspace::<f32>(
-                                            -0.5 * header.sample_rate as f32,
-                                            0.5 * header.sample_rate as f32,
-                                            header.fft_size as usize,
-                                        )
-                                        .collect();
-
-                                        if let Err(err) =
-                                            self.event_tx.send(Event::WaterfallCreated(
-                                                observation,
-                                                frequencies,
-                                            ))
-                                        {
-                                            log::error!(
-                                                "Failed to send waterfall creation event: {}",
-                                                err
-                                            );
-                                        }
-
-                                        self.file = Some(WaterfallFile {
-                                            fft_size: header.fft_size as u64,
-                                            _observation: observation,
-                                            reader,
-                                        });
-                                    }
-                                    Err(err) => {
-                                        log::error!(
-                                            "Failed to open waterfall file {}: {}",
-                                            path.to_str().unwrap_or(""),
-                                            err
-                                        );
-                                        continue;
-                                    }
+                            notify::EventKind::Create(notify::event::CreateKind::File) => {
+                                if let Err(err) = self.on_waterfall_file_created(observation, &path)
+                                {
+                                    log::error!(
+                                        "Failed to open waterfall file {}: {}",
+                                        path.to_str().unwrap_or(""),
+                                        err
+                                    );
+                                    continue;
                                 }
                             }
 
                             // some data has been written, check if it's at least one complete
                             // spectrum line and send it to the ui
-                            if op.contains(Op::WRITE) {
-                                while self.is_data_available() {
-                                    if let Some(file) = self.file.as_mut() {
-                                        let seconds =
-                                            file.reader.read_i64::<LittleEndian>().unwrap();
-                                        let mut power = vec![];
-                                        power.reserve(file.fft_size as usize);
-
-                                        for _ in 0..file.fft_size {
-                                            power.push(
-                                                file.reader.read_f32::<LittleEndian>().unwrap(),
-                                            );
-                                        }
-
-                                        if let Err(err) =
-                                            self.event_tx.send(Event::WaterfallData(seconds, power))
-                                        {
-                                            log::error!(
-                                                "Failed to send waterfall data event: {}",
-                                                err
-                                            );
-                                        }
-                                    }
+                            notify::EventKind::Modify(notify::event::ModifyKind::Data(_)) => {
+                                if let Err(err) = self.on_waterfall_data_changed() {
+                                    log::error!("Failed to send waterfall data event: {}", err);
                                 }
                             }
 
                             // the waterfall is closed by the satnogs client
                             // all data has been written and was read here so we can discard the
                             // file notify the ui
-                            if op.contains(Op::CLOSE_WRITE) {
-                                log::info!("Closed waterfall file for observation {}", observation);
-                                self.file = None;
-                                if let Err(err) =
-                                    self.event_tx.send(Event::WaterfallClosed(observation))
-                                {
+                            notify::EventKind::Access(notify::event::AccessKind::Close(_)) => {
+                                if let Err(err) = self.on_waterfall_closed(observation) {
                                     log::error!("Failed to send waterfall closing event: {}", err);
                                 }
                             }
+                            _ => {}
                         }
-                    };
+                    }
+                }
+                Ok(Err(err)) => {
+                    log::error!("Notify error: {}. Stopping watcher.", err);
+                    break;
                 }
                 Err(err) => {
                     log::error!(
@@ -221,6 +162,97 @@ impl WaterfallWatcher {
         }
 
         Ok(())
+    }
+
+    fn on_waterfall_file_created(
+        &mut self,
+        observation: u64,
+        path: &std::path::PathBuf,
+    ) -> Result<()> {
+        match OpenOptions::new().read(true).open(&path) {
+            Ok(file) => {
+                // wait until the header is written
+                // if it takes longer than 5 seconds we stop and handle the next
+                // event, this also means we're skipping this waterfall
+                let now = std::time::SystemTime::now();
+                while file.metadata().unwrap().len() < HEADER_SIZE {
+                    match now.elapsed() {
+                        Ok(elapsed) if elapsed.as_secs() <= 5 => {
+                            thread::sleep(std::time::Duration::from_millis(10))
+                        }
+                        _ => return Err(failure::err_msg("Missing Waterfall Header")),
+                    };
+                }
+
+                let mut reader = BufReader::new(file);
+                let header = WaterfallHeader::from_reader(&mut reader).unwrap();
+
+                let frequencies: Vec<_> = linspace::<f32>(
+                    -0.5 * header.sample_rate as f32,
+                    0.5 * header.sample_rate as f32,
+                    header.fft_size as usize,
+                )
+                .collect();
+
+                if let Err(err) = self
+                    .event_tx
+                    .send(Event::WaterfallCreated(observation, frequencies))
+                {
+                    log::error!("Failed to send waterfall creation event: {}", err);
+                }
+
+                self.file = Some(WaterfallFile {
+                    fft_size: header.fft_size as u64,
+                    _observation: observation,
+                    reader,
+                });
+
+                Ok(())
+            }
+            Err(err) => {
+                log::error!(
+                    "Failed to open waterfall file {}: {}",
+                    path.to_str().unwrap_or(""),
+                    err
+                );
+                Err(err.into())
+            }
+        }
+    }
+
+    fn on_waterfall_data_changed(&mut self) -> Result<()> {
+        while self.is_data_available() {
+            if let Some(file) = self.file.as_mut() {
+                let seconds = file
+                    .reader
+                    .read_i64::<LittleEndian>()
+                    .map_err(|e| failure::Error::from(e))?;
+                let mut power = vec![];
+                power.reserve(file.fft_size as usize);
+
+                for _ in 0..file.fft_size {
+                    power.push(
+                        file.reader
+                            .read_f32::<LittleEndian>()
+                            .map_err(|e| failure::Error::from(e))?,
+                    );
+                }
+
+                self.event_tx
+                    .send(Event::WaterfallData(seconds, power))
+                    .map_err(|e| failure::Error::from(e))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn on_waterfall_closed(&mut self, observation: u64) -> Result<()> {
+        log::info!("Closed waterfall file for observation {}", observation);
+        self.file = None;
+        self.event_tx
+            .send(Event::WaterfallClosed(observation))
+            .map_err(|e| e.into())
     }
 
     fn is_data_available(&mut self) -> bool {
