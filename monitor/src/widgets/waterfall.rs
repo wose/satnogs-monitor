@@ -122,13 +122,14 @@ impl<'a, L> Widget for Waterfall<'a, L>
 where
     L: AsRef<str>,
 {
-    fn draw(&mut self, area: Rect, buf: &mut Buffer) {
-        let area = match self.block {
-            Some(ref mut b) => {
-                b.draw(area, buf);
-                b.inner(area)
-            }
-            None => area,
+    fn render(mut self, area: Rect, buf: &mut Buffer) {
+        let area = match self.block.take() {
+            Some(b) => {
+                let inner_area = b.inner(area);
+                b.render(area, buf);
+                inner_area
+            },
+            None => area
         };
 
         if area.width < 10 || area.height < 5 {

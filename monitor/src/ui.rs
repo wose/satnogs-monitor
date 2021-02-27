@@ -5,16 +5,16 @@ use log::{debug, trace};
 use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
-use tui::backend::*;
+use tui::{backend::*, text::Span, text::Spans};
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Style};
-use tui::symbols::DOT;
+use tui::symbols::{DOT, Marker};
 use tui::widgets::canvas::{Canvas, Context, Line, Map, MapResolution, Points};
-use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
+use tui::widgets::{Block, Borders, Paragraph};
 use tui::Frame;
 use tui::Terminal;
 
-use tui::widgets::{Axis, Chart, Dataset, Marker};
+use tui::widgets::{Axis, Chart, Dataset};
 
 use std::f64::consts;
 use std::io;
@@ -62,10 +62,10 @@ impl Ui {
 
         // Must be called before any threads are launched
         let winch_send = sender.clone();
-        let signals = ::signal_hook::iterator::Signals::new(&[::libc::SIGWINCH])
+        let mut signals = ::signal_hook::iterator::Signals::new(&[::libc::SIGWINCH])
             .context("couldn't register resize signal handler")?;
         thread::spawn(move || {
-            for _ in &signals {
+            for _ in signals.pending() {
                 let _ = winch_send.send(Event::Resize);
             }
         });
@@ -177,10 +177,10 @@ impl Ui {
 
         self.terminal
             .draw(|mut f| {
-                InfoBar::new(state)
+                let info_bar = InfoBar::new(state)
                     .style(Style::default().fg(Color::White).bg(Color::DarkGray))
-                    .block(Block::default())
-                    .render(&mut f, rows[0]);
+                    .block(Block::default());
+                f.render_widget(info_bar, rows[0]);
 
                 let mut rect = render_station_view(&mut f, body[0], &station);
                 rect = render_next_job_view(&mut f, rect, &station);
@@ -191,13 +191,14 @@ impl Ui {
                 rect = render_future_jobs_view(&mut f, rect, &station);
 
                 // to create the rest of the border we add an empty paragraph
-                Paragraph::new([].iter())
+                let empty: Vec<Spans> = Vec::new();
+                let fill = Paragraph::new(empty)
                     .block(
                         Block::default()
                             .borders(Borders::RIGHT)
                             .border_style(Style::default().fg(COL_DARK_CYAN)),
-                    )
-                    .render(&mut f, rect);
+                    );
+                f.render_widget(fill, rect);
 
                 // render main area on the right
                 rect = body[1];
@@ -430,26 +431,27 @@ fn render_waterfall<T: Backend>(
     data: &[(i64, Vec<f32>)],
     db_range: [f32; 2],
 ) {
-    Waterfall::default()
+    let min = format!("{:>4.0}", db_range[0]);
+    let mid = format!("{:>4.0}", (db_range[0] + db_range[1]) / 2.0);
+    let max = format!("{:>4.0}", db_range[1]);
+    let labels = [&min, &mid, &max];
+
+    let legend = WaterfallLegend::default()
+        .labels(&labels)
+        .labels_style(Style::default().fg(Color::DarkGray));
+
+    let waterfall = Waterfall::default()
         .data(data)
         .bounds(db_range)
         .block(
             Block::default()
-                .title("Waterfall")
-                .title_style(Style::default().fg(Color::Yellow))
+                .title(Span::styled("Waterfall", Style::default().fg(Color::Yellow)))
                 .borders(Borders::TOP)
                 .border_style(Style::default().fg(Color::DarkGray)),
         )
-        .legend(
-            WaterfallLegend::default()
-                .labels(&[
-                    &format!("{:>4.0}", db_range[0]),
-                    &format!("{:>4.0}", (db_range[0] + db_range[1]) / 2.0),
-                    &format!("{:>4.0}", db_range[1]),
-                ])
-                .labels_style(Style::default().fg(Color::DarkGray)),
-        )
-        .render(t, rect);
+        .legend(legend);
+
+    t.render_widget(waterfall, rect);
 }
 
 fn render_spectrum_plot<T: Backend>(
@@ -460,63 +462,59 @@ fn render_spectrum_plot<T: Backend>(
     db_range: [f32; 2],
     zoom: f32,
 ) {
-    Chart::default()
+    let title = format!("Spectrum (x{:.*})", 1, zoom);
+
+    let freq_1 = Span::styled(format!("{}", (frequencies.first().unwrap() / 1000.0 / zoom).floor()), Style::default().fg(Color::DarkGray));
+    let freq_2 = Span::styled(format!("{}", (frequencies.first().unwrap() / 1000.0 / 2.0 / zoom).floor()), Style::default().fg(Color::DarkGray));
+    let freq_3 = Span::styled(format!("{}", 0), Style::default().fg(Color::DarkGray));
+    let freq_4 = Span::styled(format!("{}", (frequencies.last().unwrap() / 1000.0 / 2.0 / zoom).ceil()), Style::default().fg(Color::DarkGray));
+    let freq_5 = Span::styled(format!("{}", (frequencies.last().unwrap() / 1000.0 / zoom).ceil()), Style::default().fg(Color::DarkGray));
+    let x_labels = vec![freq_1, freq_2, freq_3, freq_4, freq_5];
+
+    let db_min = Span::styled(format!("{:>6.0}", db_range[0]), Style::default().fg(Color::DarkGray));
+    let db_mid = Span::styled(format!("{:>6.0}", (db_range[0] + db_range[1]) / 2.0), Style::default().fg(Color::DarkGray));
+    let db_max = Span::styled(format!("{:>6.0}", db_range[1]), Style::default().fg(Color::DarkGray));
+    let y_labels = vec![db_min, db_mid, db_max];
+
+    let data = frequencies
+        .iter()
+        .zip(&data.last().unwrap().1)
+        .map(|(x, y)| (*x as f64, *y as f64))
+        .collect::<Vec<_>>();
+
+    let datasets = vec![
+        Dataset::default()
+            .marker(Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .data(&data)
+    ];
+
+    let spectrum = Chart::new(datasets)
         .block(
             Block::default()
-                .title(&format!("Spectrum (x{:.*})", 1, zoom))
-                .title_style(Style::default().fg(Color::Yellow))
+                .title(Span::styled(title ,Style::default().fg(Color::Yellow)))
                 .borders(Borders::TOP)
                 .border_style(Style::default().fg(Color::DarkGray)),
         )
         .x_axis(
             Axis::default()
-                .title("Frequency (kHz)")
-                .title_style(Style::default().fg(Color::DarkGray))
+                .title(Span::styled("Frequency (kHz)", Style::default().fg(Color::DarkGray)))
                 .style(Style::default().fg(Color::DarkGray))
                 .bounds([
                     (*frequencies.first().unwrap() / zoom) as f64,
                     (*frequencies.last().unwrap() / zoom) as f64,
                 ])
-                .labels(&[
-                    &format!("{}", (frequencies.first().unwrap() / 1000.0 / zoom).floor()),
-                    &format!(
-                        "{}",
-                        (frequencies.first().unwrap() / 1000.0 / 2.0 / zoom).floor()
-                    ),
-                    &format!("{}", 0),
-                    &format!(
-                        "{}",
-                        (frequencies.last().unwrap() / 1000.0 / 2.0 / zoom).ceil()
-                    ),
-                    &format!("{}", (frequencies.last().unwrap() / 1000.0 / zoom).ceil()),
-                ])
-                .labels_style(Style::default().fg(Color::DarkGray)),
+                .labels(x_labels)
         )
         .y_axis(
             Axis::default()
-                .title("Power (dB)")
-                .title_style(Style::default().fg(Color::DarkGray))
+                .title(Span::styled("Power (dB)", Style::default().fg(Color::DarkGray)))
                 .style(Style::default().fg(Color::DarkGray))
                 .bounds([db_range[0] as f64, db_range[1] as f64])
-                .labels(&[
-                    &format!("{:>6.0}", db_range[0]),
-                    &format!("{:>6.0}", (db_range[0] + db_range[1]) / 2.0),
-                    &format!("{:>6.0}", db_range[1]),
-                ])
-                .labels_style(Style::default().fg(Color::DarkGray)),
-        )
-        .datasets(&[Dataset::default()
-            .marker(Marker::Braille)
-            .style(Style::default().fg(Color::Cyan))
-            .data(
-                frequencies
-                    .iter()
-                    .zip(&data.last().unwrap().1)
-                    .map(|(x, y)| (*x as f64, *y as f64))
-                    .collect::<Vec<_>>()
-                    .as_ref(),
-            )])
-        .render(t, rect);
+                .labels(y_labels)
+        );
+
+    t.render_widget(spectrum, rect);
 }
 
 fn render_map_view<T: Backend>(
@@ -526,7 +524,7 @@ fn render_map_view<T: Backend>(
     ground_tracks: usize,
     footprint: bool,
 ) {
-    Canvas::default()
+    let map = Canvas::default()
         .paint(|ctx| {
             ctx.draw(&Map {
                 color: COL_LIGHT_BG,
@@ -536,10 +534,11 @@ fn render_map_view<T: Backend>(
             ctx.print(station.info.lng, station.info.lat, DOT, Color::LightCyan);
 
             if let Some(job) = station.jobs.iter().next() {
+//                let vessel_name = format!("■─{}", job.vessel_name());
                 ctx.print(
                     job.sat().lon_deg,
                     job.sat().lat_deg,
-                    format!("■─{}", job.vessel_name()),
+                    r#"■"#,
                     Color::LightRed,
                 );
                 ctx.layer();
@@ -567,8 +566,9 @@ fn render_map_view<T: Backend>(
             }
         })
         .x_bounds([-180.0, 180.0])
-        .y_bounds([-90.0, 90.0])
-        .render(t, rect);
+        .y_bounds([-90.0, 90.0]);
+
+    t.render_widget(map, rect);
 }
 
 fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rect {
@@ -577,7 +577,7 @@ fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rec
         .constraints([Constraint::Length(rect.width / 2), Constraint::Min(0)].as_ref())
         .split(rect);
 
-    Canvas::default()
+    let polar_plot = Canvas::default()
         .paint(|ctx| {
             ctx.draw(&Line {
                 x1: -100.0,
@@ -640,8 +640,9 @@ fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rec
             Block::default()
                 .borders(Borders::RIGHT)
                 .border_style(Style::default().fg(COL_DARK_CYAN)),
-        )
-        .render(t, area[0]);
+        );
+
+    t.render_widget(polar_plot, area[0]);
 
     area[1]
 }
@@ -693,13 +694,15 @@ fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stati
         StationStatus::Testing => "TESTING",
     };
     let mut station_info = vec![
-        Text::styled("Station Status\n\n", Style::default().fg(Color::Yellow)),
-        Text::styled("Observation  ", Style::default().fg(Color::Cyan)),
-        Text::styled(
-            format!("{:>19}\n", station_status),
+        Spans::from(Span::styled("Station Status", Style::default().fg(Color::Yellow))),
+        Spans::default(),
+        Spans::from(vec![
+        Span::styled("Observation  ", Style::default().fg(Color::Cyan)),
+        Span::styled(
+            format!("{:>19}", station_status),
             Style::default().fg(Color::Yellow),
         ),
-    ];
+    ])];
 
     let sys_info = &station.sys_info;
     if let Some(cpu_load) = &sys_info.cpu_load {
@@ -709,35 +712,35 @@ fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stati
                 .fold(0.0, |acc, load| acc + load.idle * 100.0)
                 / cpu_load.len() as f32;
 
-        station_info.extend_from_slice(&[
-            Text::styled("CPU          ", Style::default().fg(Color::Cyan)),
-            Text::styled(format!("{:>19.1} ", load), Style::default().fg(COL_WHITE)),
-            Text::styled("%\n", Style::default().fg(Color::LightGreen)),
-        ]);
+        station_info.extend_from_slice(&[Spans::from(vec![
+            Span::styled("CPU          ", Style::default().fg(Color::Cyan)),
+            Span::styled(format!("{:>19.1} ", load), Style::default().fg(COL_WHITE)),
+            Span::styled("%", Style::default().fg(Color::LightGreen)),
+        ])]);
         lines += 1;
     }
 
     if let Some(temp) = sys_info.cpu_temp {
-        station_info.extend_from_slice(&[
-            Text::styled("CPU Temp     ", Style::default().fg(Color::Cyan)),
-            Text::styled(format!("{:19.1}", temp), Style::default().fg(COL_WHITE)),
-            Text::styled(" °C\n", Style::default().fg(Color::LightGreen)),
-        ]);
+        station_info.extend_from_slice(&[Spans::from(vec![
+            Span::styled("CPU Temp     ", Style::default().fg(Color::Cyan)),
+            Span::styled(format!("{:19.1}", temp), Style::default().fg(COL_WHITE)),
+            Span::styled(" °C", Style::default().fg(Color::LightGreen)),
+        ])]);
         lines += 1;
     }
 
     if let Some(mem) = &sys_info.mem {
-        station_info.extend_from_slice(&[
-            Text::styled("Mem          ", Style::default().fg(Color::Cyan)),
-            Text::styled(
+        station_info.extend_from_slice(&[Spans::from(vec![
+            Span::styled("Mem          ", Style::default().fg(Color::Cyan)),
+            Span::styled(
                 format!(
                     "{:19.1}",
                     100.0 - (mem.free.as_u64() as f32 / mem.total.as_u64() as f32) * 100.0
                 ),
                 Style::default().fg(COL_WHITE),
             ),
-            Text::styled(" %\n", Style::default().fg(Color::LightGreen)),
-        ]);
+            Span::styled(" %", Style::default().fg(Color::LightGreen)),
+        ])]);
         lines += 1;
     }
 
@@ -746,14 +749,15 @@ fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stati
         .constraints([Constraint::Length(lines), Constraint::Min(0)].as_ref())
         .split(rect);
 
-    Paragraph::new(station_info.iter())
+    let station_par = Paragraph::new(station_info)
         .alignment(Alignment::Left)
         .block(
             Block::default()
                 .borders(Borders::RIGHT)
                 .border_style(Style::default().fg(COL_DARK_CYAN)),
-        )
-        .render(t, area[0]);
+        );
+
+    t.render_widget(station_par, area[0]);
 
     area[1]
 }
@@ -771,73 +775,98 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
         };
 
         job_info.extend_from_slice(&[
-            Text::styled("Next Job", Style::default().fg(Color::Yellow)),
-            Text::styled(
-                format!(
-                    "                {:+4}'{:2}\"\n\n",
-                    delta_t.num_minutes(),
-                    (delta_t.num_seconds() % 60).abs()
+            Spans::from(vec![
+                Span::styled("Next Job", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    format!(
+                        "                {:+4}'{:2}\"",
+                        delta_t.num_minutes(),
+                        (delta_t.num_seconds() % 60).abs()
+                    ),
+                    time_style,
                 ),
-                time_style,
-            ),
-            Text::styled("ID           ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}\n", job.id()),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("Vessel       ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}\n", job.vessel_name()),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("Start        ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}\n", job.start().format("%Y-%m-%d %H:%M:%S")),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("End          ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}\n", job.end().format("%Y-%m-%d %H:%M:%S")),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("Mode         ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}\n", job.mode()),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("Frequency    ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.frequency_mhz()),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" MHz\n\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Rise         ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.observation.rise_azimuth),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Max          ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.observation.max_altitude),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Set          ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:19.3}", job.observation.set_azimuth),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::default(),
+            Spans::from(vec![
+                Span::styled("ID           ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.id()),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("Vessel       ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.vessel_name()),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("Start        ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.start().format("%Y-%m-%d %H:%M:%S")),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("End          ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.end().format("%Y-%m-%d %H:%M:%S")),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("Mode         ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.mode()),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("Frequency    ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:19.3}", job.frequency_mhz()),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" MHz", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::default(),
+            Spans::from(vec![
+                Span::styled("Rise         ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:19.3}", job.observation.rise_azimuth),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" °", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Max          ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:19.3}", job.observation.max_altitude),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" °", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Set          ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:19.3}", job.observation.set_azimuth),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" °", Style::default().fg(Color::LightGreen)),
+            ]),
         ]);
 
         13
     } else {
-        job_info.push(Text::styled(
-            "Next Job\n\n",
-            Style::default().fg(Color::Yellow),
-        ));
-        job_info.push(Text::styled("None\n", Style::default().fg(Color::Red)));
+        job_info.extend_from_slice(&[
+            Spans::from(Span::styled(
+                "Next Job",
+                Style::default().fg(Color::Yellow),
+            )),
+            Spans::default(),
+            Spans::from(Span::styled("None\n", Style::default().fg(Color::Red))),
+        ]);
 
         4
     };
@@ -847,14 +876,15 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
         .constraints([Constraint::Length(lines), Constraint::Min(0)].as_ref())
         .split(rect);
 
-    Paragraph::new(job_info.iter())
+    let job_info = Paragraph::new(job_info)
         .alignment(Alignment::Left)
         .block(
             Block::default()
                 .borders(Borders::RIGHT)
                 .border_style(Style::default().fg(COL_DARK_CYAN)),
-        )
-        .render(t, area[0]);
+        );
+
+    t.render_widget(job_info, area[0]);
 
     area[1]
 }
@@ -869,60 +899,73 @@ fn render_satellite_view<T: Backend>(
     let station = state.get_active_station();
     let jobs = &station.jobs;
 
-    sat_info.push(Text::styled(
+    sat_info.push(Spans::from(Span::styled(
         "Satellite\n\n",
         Style::default().fg(Color::Yellow),
-    ));
+    )));
 
     let lines = if jobs.is_empty() {
-        sat_info.push(Text::styled("None\n", Style::default().fg(Color::Red)));
+        sat_info.push(Spans::from(Span::styled("None", Style::default().fg(Color::Red))));
 
         4
     } else {
         let job = jobs.iter().next().unwrap();
         sat_info.extend_from_slice(&[
-            Text::styled("Orbit        ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19}", job.sat().orbit_nr),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled("\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Latitude     ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().lat_deg),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Longitude    ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().lon_deg),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Altitude     ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().alt_km),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Velocity     ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().vel_km_s),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Range        ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().range_km),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" km\n", Style::default().fg(Color::LightGreen)),
-            Text::styled("Range Rate   ", Style::default().fg(Color::Cyan)),
-            Text::styled(
-                format!("{:>19.3}", job.sat().range_rate_km_sec),
-                Style::default().fg(COL_WHITE),
-            ),
-            Text::styled(" km/s\n", Style::default().fg(Color::LightGreen)),
+            Spans::from(vec![
+                Span::styled("Orbit        ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19}", job.sat().orbit_nr),
+                    Style::default().fg(COL_WHITE),
+                ),
+            ]),
+            Spans::from(vec![
+                Span::styled("Latitude     ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().lat_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" °", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Longitude    ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().lon_deg),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" °", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Altitude     ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().alt_km),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" km\n", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Velocity     ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().vel_km_s),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" km/s", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Range        ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().range_km),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" km", Style::default().fg(Color::LightGreen)),
+            ]),
+            Spans::from(vec![
+                Span::styled("Range Rate   ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:>19.3}", job.sat().range_rate_km_sec),
+                    Style::default().fg(COL_WHITE),
+                ),
+                Span::styled(" km/s", Style::default().fg(Color::LightGreen)),
+            ]),
         ]);
 
         if let Some((azimuth, elevation)) = state.rotator_position {
@@ -936,43 +979,51 @@ fn render_satellite_view<T: Backend>(
             };
 
             sat_info.extend_from_slice(&[
-                Text::styled("Azimuth     ", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!("{:>8.3}", azimuth),
-                    Style::default().fg(rotator_color),
-                ),
-                Text::styled(" °   ", Style::default().fg(Color::LightGreen)),
-                Text::styled(
-                    format!("{:>7.3}", job.sat().az_deg),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                Text::styled("Elevation   ", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!("{:>8.3}", elevation),
-                    Style::default().fg(rotator_color),
-                ),
-                Text::styled(" °   ", Style::default().fg(Color::LightGreen)),
-                Text::styled(
-                    format!("{:>7.3}", job.sat().el_deg),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                Spans::from(vec![
+                    Span::styled("Azimuth     ", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>8.3}", azimuth),
+                        Style::default().fg(rotator_color),
+                    ),
+                    Span::styled(" °   ", Style::default().fg(Color::LightGreen)),
+                    Span::styled(
+                        format!("{:>7.3}", job.sat().az_deg),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(" °", Style::default().fg(Color::LightGreen)),
+                ]),
+                Spans::from(vec![
+                    Span::styled("Elevation   ", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>8.3}", elevation),
+                        Style::default().fg(rotator_color),
+                    ),
+                    Span::styled(" °   ", Style::default().fg(Color::LightGreen)),
+                    Span::styled(
+                        format!("{:>7.3}", job.sat().el_deg),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(" °", Style::default().fg(Color::LightGreen)),
+                ]),
             ]);
         } else {
             sat_info.extend_from_slice(&[
-                Text::styled("Azimuth      ", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!("{:>19.3}", job.sat().az_deg),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
-                Text::styled("Elevation    ", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!("{:>19.3}", job.sat().el_deg),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(" °\n", Style::default().fg(Color::LightGreen)),
+                Spans::from(vec![
+                    Span::styled("Azimuth      ", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>19.3}", job.sat().az_deg),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(" °", Style::default().fg(Color::LightGreen)),
+                ]),
+                Spans::from(vec![
+                    Span::styled("Elevation    ", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>19.3}", job.sat().el_deg),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(" °", Style::default().fg(Color::LightGreen)),
+                ]),
             ]);
         }
 
@@ -984,14 +1035,15 @@ fn render_satellite_view<T: Backend>(
         .constraints([Constraint::Length(lines), Constraint::Min(0)].as_ref())
         .split(rect);
 
-    Paragraph::new(sat_info.iter())
+    let sat_info = Paragraph::new(sat_info)
         .alignment(Alignment::Left)
         .block(
             Block::default()
                 .borders(Borders::RIGHT)
                 .border_style(Style::default().fg(COL_DARK_CYAN)),
-        )
-        .render(t, area[0]);
+        );
+
+    t.render_widget(sat_info, area[0]);
 
     area[1]
 }
@@ -1000,13 +1052,13 @@ fn render_future_jobs_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &S
     let mut jobs_info = vec![];
     let mut lines = 4u16;
 
-    jobs_info.push(Text::styled(
+    jobs_info.push(Spans::from(Span::styled(
         format!("Future Jobs ({})\n\n", station.jobs.len()),
         Style::default().fg(Color::Yellow),
-    ));
+    )));
 
     if station.jobs.is_empty() {
-        jobs_info.push(Text::styled("None\n", Style::default().fg(Color::Red)));
+        jobs_info.push(Spans::from(Span::styled("None\n", Style::default().fg(Color::Red))));
     } else {
         let jobs_rev = station
             .jobs
@@ -1016,34 +1068,38 @@ fn render_future_jobs_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &S
         for job in jobs_rev {
             let delta_t = Utc::now() - job.start();
             jobs_info.extend_from_slice(&[
-                Text::styled(
-                    format!("#{:<7}─┬", job.id()),
-                    Style::default().fg(Color::Cyan),
-                ),
-                Text::styled(
-                    format!("{:>26}", job.vessel_name()),
-                    Style::default().fg(Color::Yellow),
-                ),
-                Text::styled("┐\n", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!(
-                        "{:5}'{:2}\"",
-                        delta_t.num_minutes(),
-                        (delta_t.num_seconds() % 60).abs()
+                Spans::from(vec![
+                    Span::styled(
+                        format!("#{:<7}─┬", job.id()),
+                        Style::default().fg(Color::Cyan),
                     ),
-                    Style::default().fg(Color::DarkGray),
-                ),
-                Text::styled("└", Style::default().fg(Color::Cyan)),
-                Text::styled(
-                    format!("{:>10} ", job.mode()),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(
-                    format!("{:11.3}", job.frequency_mhz()),
-                    Style::default().fg(COL_WHITE),
-                ),
-                Text::styled(" MHz", Style::default().fg(Color::LightGreen)),
-                Text::styled("┘\n", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>26}", job.vessel_name()),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::styled("┐", Style::default().fg(Color::Cyan)),
+                ]),
+                Spans::from(vec![
+                    Span::styled(
+                        format!(
+                            "{:5}'{:2}\"",
+                            delta_t.num_minutes(),
+                            (delta_t.num_seconds() % 60).abs()
+                        ),
+                        Style::default().fg(Color::DarkGray),
+                    ),
+                    Span::styled("└", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("{:>10} ", job.mode()),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(
+                        format!("{:11.3}", job.frequency_mhz()),
+                        Style::default().fg(COL_WHITE),
+                    ),
+                    Span::styled(" MHz", Style::default().fg(Color::LightGreen)),
+                    Span::styled("┘", Style::default().fg(Color::Cyan)),
+                ]),
             ]);
 
             lines += 2;
@@ -1055,14 +1111,15 @@ fn render_future_jobs_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &S
         .constraints([Constraint::Length(lines), Constraint::Min(0)].as_ref())
         .split(rect);
 
-    Paragraph::new(jobs_info.iter())
+    let jobs_info = Paragraph::new(jobs_info)
         .alignment(Alignment::Left)
         .block(
             Block::default()
                 .borders(Borders::RIGHT)
                 .border_style(Style::default().fg(COL_DARK_CYAN)),
-        )
-        .render(t, area[0]);
+        );
+
+    t.render_widget(jobs_info, area[0]);
 
     area[1]
 }
@@ -1071,48 +1128,41 @@ fn render_log_view<T: Backend>(t: &mut Frame<T>, rect: Rect, logs: &LogQueue) {
     let block = Block::default()
         .borders(Borders::RIGHT | Borders::LEFT | Borders::TOP)
         .border_style(Style::default().fg(COL_DARK_CYAN))
-        .title("Log")
-        .title_style(Style::default().fg(Color::Yellow));
+        .title(Span::styled("Log", Style::default().fg(Color::Yellow)));
 
     let inner = block.inner(rect);
     let empty_line = (0..inner.width).map(|_| " ").collect::<String>() + "\n";
 
     // clear background of the log window
-    Paragraph::new(
-        (0..inner.height)
-            .map(|_| Text::raw(&empty_line))
-            .collect::<Vec<_>>()
-            .iter(),
-    )
-    .render(t, inner);
+    let lines = (0..inner.height)
+        .map(|_| Spans::from(Span::raw(&empty_line)))
+        .collect::<Vec<_>>();
 
-    Paragraph::new(
-        logs.iter()
-            .take(9)
-            .map(|(time, level, message)| {
-                let style = match level {
-                    log::Level::Warn => Style::default().fg(Color::Yellow),
-                    log::Level::Error => Style::default().fg(Color::Red),
-                    _ => Style::default(),
-                };
+    let bg = Paragraph::new(lines);
 
-                (
-                    Text::raw(format!("{}", time)),
-                    Text::styled(format!(" {:8} ", level), style),
-                    Text::raw(format!("{}\n", message)),
-                )
-            })
-            .collect::<Vec<_>>()
-            .iter()
-            .rev()
-            .fold(Vec::new(), |mut logs, log| {
-                logs.push(&log.0);
-                logs.push(&log.1);
-                logs.push(&log.2);
-                logs
-            })
-            .into_iter(),
-    )
-    .block(block)
-    .render(t, rect);
+    t.render_widget(bg, inner);
+    let logs = logs.iter()
+                   .take(9)
+                   .collect::<Vec<_>>()
+                   .iter()
+                   .rev()
+                   .map(|(time, level, message)| {
+                       let style = match level {
+                           log::Level::Warn => Style::default().fg(Color::Yellow),
+                           log::Level::Error => Style::default().fg(Color::Red),
+                           _ => Style::default(),
+                       };
+
+                       Spans::from(vec![
+                           Span::raw(format!("{}", time)),
+                           Span::styled(format!(" {:8} ", level), style),
+                           Span::raw(format!("{}", message)),
+                       ])
+                   })
+                   .collect::<Vec<_>>();
+
+    let log = Paragraph::new(logs)
+        .block(block);
+
+    t.render_widget(log, rect);
 }

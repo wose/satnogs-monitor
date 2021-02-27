@@ -45,7 +45,7 @@ impl<'a> InfoBar<'a> {
 }
 
 impl<'a> Widget for InfoBar<'a> {
-    fn draw(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         if area.height < 1 {
             return;
         }
@@ -62,7 +62,7 @@ impl<'a> Widget for InfoBar<'a> {
             buf.set_string(x, area.top(), " ▲ ", style);
 
             if area.height > 1 {
-                buf.set_string(x, area.top() + 1, "▀▀▀", Style::default().fg(style.fg));
+                buf.set_string(x, area.top() + 1, "▀▀▀", Style::default().fg(style.fg.unwrap()));
             }
 
             let title = format!(" {} - {} ", station.info.id, station.info.name);
