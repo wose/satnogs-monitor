@@ -67,7 +67,12 @@ impl<'a> Widget for InfoBar<'a> {
 
             let title = format!(" {} - {} ", station.info.id, station.info.name);
             let title_width = UnicodeWidthStr::width(title.as_str()) as u16;
-            buf.set_string(x + 3, area.top(), title, Style::default().fg(Color::White).bg(Color::DarkGray));
+            buf.set_string(
+                x + 3,
+                area.top(),
+                title,
+                Style::default().fg(Color::White).bg(Color::DarkGray),
+            );
             if area.height > 1 {
                 let decal_style = match self.state.active_station {
                     id if id == station.info.id => self.active_style,
@@ -75,11 +80,7 @@ impl<'a> Widget for InfoBar<'a> {
                 };
 
                 let decal = (0..title_width).map(|_| "▀").collect::<String>();
-                buf.set_string(
-                    x + 3,
-                    area.top() + 1,
-                    decal,
-                    decal_style);
+                buf.set_string(x + 3, area.top() + 1, decal, decal_style);
             }
 
             x += 3 + title_width + space_between_tabs;

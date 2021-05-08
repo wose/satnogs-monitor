@@ -72,9 +72,7 @@ impl Connection {
             warn!("Command channel closed");
         });
 
-        Self {
-            command_tx,
-        }
+        Self { command_tx }
     }
 
     pub fn send(&mut self, command: Command) -> Result<(), SendError<Command>> {
