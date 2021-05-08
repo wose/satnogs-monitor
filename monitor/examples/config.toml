@@ -12,6 +12,11 @@
 # display the rotators position next to the vessels azimuth and elevation
 #rotctld_address = "127.0.0.1:4533"
 
+# Change the rotctld_interval to adjust the polling interval for the rotator
+# position. Increase this value if your rotator position stops updating after
+# the observation has been started. (min: 1s, default: 5s)
+#rotctld_interval = 5
+
 # The job data is updated every 600 seconds. Since you can't schedule new jobs
 # sooner than now + 10 minutes this guarantees that we don't miss any
 # observations.

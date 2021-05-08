@@ -41,6 +41,7 @@ pub struct Settings {
     pub log_level: Option<u64>,
     pub ui: UiConfig,
     pub rotctld_address: Option<String>,
+    pub rotctld_interval: u64,
     pub stations: Vec<StationConfig>,
     pub data_path: Option<String>,
     pub waterfall_zoom: f32,
@@ -60,6 +61,7 @@ impl Settings {
         settings.set_default("ui.sat_footprint", true)?;
         settings.set_default("ui.spectrum_plot", false)?;
         settings.set_default("ui.waterfall", false)?;
+        settings.set_default("rotctld_interval", 5)?;
         settings.set_default("stations", Vec::<config::Value>::new())?;
         settings.set_default("waterfall_zoom", 1.0)?;
 

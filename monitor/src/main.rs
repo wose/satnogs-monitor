@@ -66,6 +66,7 @@ fn run() -> Result<()> {
 
     let data_path = settings.data_path.clone();
     let rotctld_address = settings.rotctld_address.clone();
+    let rotctld_interval = settings.rotctld_interval.clone();
 
     let local_stations: Vec<_> = settings
         .stations
@@ -111,13 +112,17 @@ fn run() -> Result<()> {
         let tx = tui.sender();
         let mut client = RotCtldClient::new(&rotctld_address)?;
 
-        log::info!("Connected to rotctld at {}", rotctld_address);
+        log::info!(
+            "Connected to rotctld at {} polling every {} seconds",
+            rotctld_address,
+            rotctld_interval
+        );
 
         thread::spawn(move || {
             while let Ok(pos) = client.position() {
                 log::trace!("RotCtl: {} / {}", pos.0, pos.1);
                 match tx.send(Event::RotatorPosition(pos.0, pos.1)) {
-                    Ok(_) => thread::sleep(std::time::Duration::new(1, 0)),
+                    Ok(_) => thread::sleep(std::time::Duration::new(rotctld_interval, 0)),
                     Err(e) => {
                         log::error!("Failed to send rotator position: {}", e);
                         break;
@@ -235,6 +240,13 @@ fn settings() -> Result<Settings> {
                 .help("Enables rotator monitoring if set to a rotctld address"),
         )
         .arg(
+            Arg::with_name("rotctld_interval")
+                .long("rotctld-interval")
+                .value_name("INTERVAL")
+                .takes_value(true)
+                .help("Polls the rotator position every INTERVAL seconds (5)"),
+        )
+        .arg(
             Arg::with_name("db_min")
                 .long("db-min")
                 .value_name("DB")
@@ -336,6 +348,10 @@ fn settings() -> Result<Settings> {
 
     if let Ok(rotctld_address) = value_t!(matches.value_of("rotctld_address"), String) {
         settings.rotctld_address = Some(rotctld_address);
+    }
+
+    if let Ok(rotctld_interval) = value_t!(matches.value_of("rotctld_interval"), u64) {
+        settings.rotctld_interval = rotctld_interval;
     }
 
     if let Ok(data_path) = value_t!(matches.value_of("data_path"), String) {

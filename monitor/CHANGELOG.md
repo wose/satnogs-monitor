@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- #26 command line parameter `--rotctld-interval` and config option
+  `rotctld_interval` to control the polling interval of the rotator position
+- #26 increase default `rotctld_interval` from 1 to 5 seconds
 - #20 command line parameter `--job-update-interval` and config option
   `job_update_interval` to control how often we ask the network for new jobs
 
