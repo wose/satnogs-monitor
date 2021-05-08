@@ -1,6 +1,6 @@
 [package]
 name = "satnogs-monitor"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
