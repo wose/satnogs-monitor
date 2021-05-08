@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 chrono = { version = "0.4.11", features = ["serde", "rustc-serialize"] }
-restson = "0.6.0"
+restson = "0.7.0"
 serde = "1.0.111"
 serde_derive = "1.0.111"
