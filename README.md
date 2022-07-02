@@ -1,6 +1,6 @@
 # SatNOGS Monitor (WIP)
 
-![Screenshot](/doc/screen.png)
+![Screenshot](doc/screen.png)
 
 ## WIP
 
