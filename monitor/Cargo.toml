@@ -11,7 +11,7 @@ circular-queue = "0.2.6"
 clap = "2.34.0"
 config = "0.11.0"
 crossbeam-channel = "0.5.5"
-directories = "2.0.2"
+directories = "4.0.1"
 failure = "0.1.8"
 failure_derive = "0.1.8"
 gpredict = { git = "https://github.com/wose/rust-gpredict.git" }
