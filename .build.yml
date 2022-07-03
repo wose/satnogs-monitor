@@ -1,0 +1,30 @@
+image: archlinux
+packages:
+  - rustup
+  - cmake
+sources:
+  - https://github.com/cubehub/libgpredict.git
+  - https://git.sr.ht/~wose/satnogs-monitor
+tasks:
+  - setup-libgpredict: |
+      cd libgpredict
+      mkdir build
+      cd build
+      cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+      make
+      sudo make install
+      sudo ldconfig
+  - setup-satnogs-monitor: |
+      rustup toolchain install nightly stable
+      cd satnogs-monitor/monitor
+      rustup run stable cargo fetch
+  - stable: |
+      rustup default stable
+      cd satnogs-monitor/monitor
+      cargo build --verbose
+      cargo test --verbose
+  - nightly: |
+      rustup default nightly
+      cd satnogs-monitor/monitor
+      cargo build --verbose ||:
+      cargo test --verbose  ||:
