@@ -204,9 +204,9 @@ dependencies = [
 
 [[package]]
 name = "circular-queue"
-version = "0.2.4"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b0aadaeed21c6fc5ff19687407640db71f9236e2eb6c66ec426b82497645c7a"
+checksum = "1d34327ead1c743a10db339de35fb58957564b99d248a67985c55638b22c59b5"
 dependencies = [
  "version_check",
 ]
