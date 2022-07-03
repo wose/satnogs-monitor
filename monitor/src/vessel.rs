@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use gpredict::{Location, Predict, Sat, Tle};
-use time;
 
 pub struct Vessel {
     pub footprint: Vec<(f64, f64)>,
@@ -130,10 +129,10 @@ impl Vessel {
 
         let mut current_orbit = self.sat.orbit_nr;
         let this_orbit = current_orbit;
-        let mut time = time::now_utc();
+        let mut time = hifitime::Epoch::now().unwrap();
 
         while current_orbit == this_orbit {
-            time = time - time::Duration::seconds(10);
+            time = time - 10 * hifitime::Unit::Second;//time::Duration::seconds(10);
             predict.update(Some(time));
             current_orbit = predict.sat.orbit_nr;
         }
@@ -141,7 +140,7 @@ impl Vessel {
         current_orbit = this_orbit;
         self.ground_track.clear();
         while current_orbit < this_orbit + orbits as u64 {
-            time = time + time::Duration::seconds(10);
+            time = time + 10 * hifitime::Unit::Second;//time::Duration::seconds(10);
             predict.update(Some(time));
             self.ground_track
                 .push((predict.sat.lon_deg, predict.sat.lat_deg));
@@ -156,14 +155,14 @@ pub fn calc_polar_track(
     los: DateTime<Utc>,
 ) -> Vec<(f64, f64)> {
     let mut polar_track = vec![];
-    let time_aos = time::at_utc(time::Timespec::new(aos.timestamp(), 0));
-    let time_los = time::at_utc(time::Timespec::new(los.timestamp(), 0));
+    let time_aos = hifitime::Epoch::from_unix_seconds(aos.timestamp() as f64);
+    let time_los = hifitime::Epoch::from_unix_seconds(los.timestamp() as f64);
 
     let mut time = time_aos;
     while time <= time_los {
         predict.update(Some(time));
         polar_track.push((predict.sat.az_deg, predict.sat.el_deg));
-        time = time + time::Duration::seconds(2);
+        time = time + 2 * hifitime::Unit::Second;
     }
 
     polar_track

@@ -764,7 +764,7 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
 
     let lines = if let Some(job) = jobs_rev.next() {
         let delta_t = Utc::now() - job.start();
-        let time_style = if delta_t >= time::Duration::zero() {
+        let time_style = if delta_t >= chrono::Duration::zero() {
             Style::default().fg(Color::Green)
         } else {
             Style::default().fg(Color::DarkGray)

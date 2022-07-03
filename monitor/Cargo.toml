@@ -27,7 +27,7 @@ serde_derive = "1.0.111"
 signal-hook = "0.1.15"
 systemstat = "0.1.5"
 termion = "1.5.5"
-time = "0.1.42"
+hifitime = "3.2.0"
 tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}
 unicode-width = "0.1.7"
 itertools-num = "0.1.3"
