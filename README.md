@@ -2,6 +2,8 @@
 
 ![Screenshot](doc/screen.png)
 
+[![builds.sr.ht status](https://builds.sr.ht/~wose/satnogs-monitor.svg)](https://builds.sr.ht/~wose/satnogs-monitor?)
+
 ## WIP
 
 This is more of a proof of concept for now. I'm playing with different
