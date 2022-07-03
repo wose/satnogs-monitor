@@ -1191,12 +1191,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "read_color"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f4c8858baa4ad3c8bcc156ae91a0ffe22b76a3975c40c49b4f04c15c6bce0da"
-
-[[package]]
 name = "redox_syscall"
 version = "0.1.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1320,7 +1314,6 @@ dependencies = [
  "libc",
  "log",
  "notify",
- "read_color",
  "regex",
  "satnogs-network-client",
  "serde 1.0.138",
