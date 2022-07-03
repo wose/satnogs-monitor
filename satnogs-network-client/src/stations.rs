@@ -27,7 +27,6 @@ pub struct Antenna {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-//#[serde(tag = "status")]
 pub enum StationStatus {
     Online,
     Offline,

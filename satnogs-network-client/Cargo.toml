@@ -1,11 +1,11 @@
 [package]
 name = "satnogs-network-client"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 
 [dependencies]
-chrono = { version = "0.4.11", features = ["serde", "rustc-serialize"] }
-restson = "0.7.0"
-serde = "1.0.111"
-serde_derive = "1.0.111"
+chrono = { version = "0.4.19", features = ["serde", "rustc-serialize"] }
+restson = "1.2.0"
+serde = "1.0.138"
+serde_derive = "1.0.138"
