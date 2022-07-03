@@ -1,6 +1,6 @@
+use anyhow::Context as _;
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
-use failure::ResultExt;
 use log::{debug, trace};
 use satnogs_network_client::{Client, StationStatus};
 use termion::input::{MouseTerminal, TermRead};

@@ -1,7 +1,6 @@
 use clap::{crate_authors, crate_version, value_t, values_t, App, Arg};
-use failure::Fail;
+use anyhow::{bail, Result};
 use satnogs_network_client::Client;
-use std::process;
 use std::thread;
 use systemstat::{Platform, System};
 
@@ -26,25 +25,8 @@ use self::station::Station;
 use self::sysinfo::SysInfo;
 use self::waterfall::WaterfallWatcher;
 
-type Result<T> = std::result::Result<T, failure::Error>;
-
-#[derive(Debug, Fail)]
-enum InitializationError {
-    #[fail(display = "no station provided")]
-    NoStationError,
-    #[fail(display = "invalid dB range min {} >= max {}", db_min, db_max)]
-    InvalidDbRange { db_min: f32, db_max: f32 },
-}
-
-fn main() {
-    if let Err(err) = run() {
-        eprintln!("{}", format_error(&err));
-        let backtrace = err.backtrace().to_string();
-        if !backtrace.trim().is_empty() {
-            eprintln!("{}", backtrace);
-        }
-        process::exit(1);
-    }
+fn main() -> Result<()> {
+    run()
 }
 
 fn run() -> Result<()> {
@@ -148,18 +130,6 @@ fn get_sysinfo() -> Result<SysInfo> {
         mem: sys.memory().ok(),
         uptime: sys.uptime().ok(),
     })
-}
-
-fn format_error(err: &failure::Error) -> String {
-    let mut out = "Error occurred: ".to_string();
-    out.push_str(&err.to_string());
-    let mut prev = err.as_fail();
-    while let Some(next) = prev.cause() {
-        out.push_str("\n -> ");
-        out.push_str(&next.to_string());
-        prev = next;
-    }
-    out
 }
 
 fn settings() -> Result<Settings> {
@@ -335,7 +305,7 @@ fn settings() -> Result<Settings> {
     }
 
     if settings.stations.is_empty() {
-        return Err(InitializationError::NoStationError.into());
+        bail!("no station provided");
     }
 
     // only one entry per station
@@ -367,11 +337,7 @@ fn settings() -> Result<Settings> {
     }
 
     if settings.ui.db_min >= settings.ui.db_max {
-        return Err(InitializationError::InvalidDbRange {
-            db_min: settings.ui.db_min,
-            db_max: settings.ui.db_max,
-        }
-        .into());
+        bail!("invalid dB range: {} >= {}", settings.ui.db_min, settings.ui.db_max);
     }
 
     settings.ui.spectrum_plot |= matches.is_present("spectrum");

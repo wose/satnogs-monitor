@@ -1,6 +1,7 @@
 use crate::event::Event;
 use crate::Result;
 
+use anyhow::bail;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use chrono::{DateTime, FixedOffset};
 use crossbeam_channel::{unbounded, Receiver};
@@ -180,7 +181,7 @@ impl WaterfallWatcher {
                         Ok(elapsed) if elapsed.as_secs() <= 5 => {
                             thread::sleep(std::time::Duration::from_millis(10))
                         }
-                        _ => return Err(failure::err_msg("Missing Waterfall Header")),
+                        _ => bail!("Missing Waterfall Header"),
                     };
                 }
 
@@ -225,22 +226,19 @@ impl WaterfallWatcher {
             if let Some(file) = self.file.as_mut() {
                 let seconds = file
                     .reader
-                    .read_i64::<LittleEndian>()
-                    .map_err(|e| failure::Error::from(e))?;
+                    .read_i64::<LittleEndian>()?;
                 let mut power = vec![];
                 power.reserve(file.fft_size as usize);
 
                 for _ in 0..file.fft_size {
                     power.push(
                         file.reader
-                            .read_f32::<LittleEndian>()
-                            .map_err(|e| failure::Error::from(e))?,
+                            .read_f32::<LittleEndian>()?,
                     );
                 }
 
                 self.event_tx
-                    .send(Event::WaterfallData(seconds, power))
-                    .map_err(|e| failure::Error::from(e))?;
+                    .send(Event::WaterfallData(seconds, power))?;
             }
         }
 
