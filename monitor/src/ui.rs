@@ -3,6 +3,8 @@ use chrono::prelude::*;
 use circular_queue::CircularQueue;
 use log::{debug, trace};
 use satnogs_network_client::{Client, StationStatus};
+use signal_hook::consts::signal::SIGWINCH;
+use signal_hook::iterator::Signals;
 use termion::input::{MouseTerminal, TermRead};
 use termion::raw::{IntoRawMode, RawTerminal};
 use tui::backend::*;
@@ -62,10 +64,10 @@ impl Ui {
 
         // Must be called before any threads are launched
         let winch_send = sender.clone();
-        let signals = ::signal_hook::iterator::Signals::new(&[::libc::SIGWINCH])
+        let mut signals = Signals::new(&[SIGWINCH])
             .context("couldn't register resize signal handler")?;
         thread::spawn(move || {
-            for _ in &signals {
+            for _ in signals.forever() {
                 let _ = winch_send.send(Event::Resize);
             }
         });
