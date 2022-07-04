@@ -26,5 +26,5 @@ systemstat = "0.1.11"
 termion = "1.5.6"
 hifitime = "3.2.0"
 tui = { git = "https://github.com/wose/tui-rs.git" , features = ["termion"]}
-unicode-width = "0.1.7"
+unicode-width = "0.1.9"
 itertools-num = "0.1.3"
