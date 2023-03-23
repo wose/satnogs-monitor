@@ -7,7 +7,7 @@ use chrono::{DateTime, FixedOffset};
 use crossbeam_channel::{unbounded, Receiver};
 use itertools_num::linspace;
 use lazy_static::lazy_static;
-use notify::{immediate_watcher, Event as RawEvent, RecursiveMode, Watcher};
+use notify::{recommended_watcher, Event as RawEvent, RecursiveMode, Watcher};
 use regex::Regex;
 
 use std::fs::{File, OpenOptions};
@@ -88,8 +88,8 @@ impl WaterfallWatcher {
     pub fn new(path: &str, event_tx: SyncSender<Event>) -> Result<Self> {
         let (watcher_tx, watcher_rx) = unbounded();
 
-        let mut watcher = immediate_watcher(move |evt| watcher_tx.send(evt).unwrap())?;
-        watcher.watch(path, RecursiveMode::NonRecursive)?;
+        let mut watcher = recommended_watcher(move |evt| watcher_tx.send(evt).unwrap())?;
+        watcher.watch(std::path::Path::new(path), RecursiveMode::NonRecursive)?;
 
         Ok(WaterfallWatcher {
             event_tx,
