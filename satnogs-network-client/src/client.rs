@@ -32,20 +32,32 @@ impl Client {
         let filter: Vec<_> = filter.into();
         let mut observations = vec![];
 
-        // We cannot use the response headers to know if there is next page with more
-        // results. So we iterate over every page and stop if we receive an HttpError 404.
-        for page in 1.. {
+        let mut pages_remaining = true;
+        let mut filter_cursor = "".to_owned();
+        while pages_remaining {
+            pages_remaining = false;
             let mut filter = filter.clone();
-            let page = format!("{}", page);
-            filter.push(("page", &page));
+            filter.push(("cursor", &filter_cursor));
             match self.client.get_with((), &filter) {
                 Ok(resp) => {
-                    let ObservationList::Array(ref obs) = *resp;
-                    observations.extend_from_slice(obs);
-                    // check if we are surely on the last page
-                    if obs.len() < 25 {
-                        break;
+                    let resp_data: Response<ObservationList> = resp; 
+                    let resp_headers = resp_data.headers();
+                    if resp_headers.contains_key("link") {
+                        let link_header = &resp_headers["Link"];
+                        let res = parse_link_header::parse(link_header.to_str().unwrap());
+                        assert!(res.is_ok());
+
+                        let val = res.unwrap();
+                        let next_link = val.get(&Some("next".to_string()));
+                        if next_link.is_some() {
+                            let next_url = &next_link.unwrap();
+                            filter_cursor = next_url.queries["cursor"].to_string();
+                            pages_remaining = true;
+                        }
                     }
+
+                    let ObservationList::Array(obs) = resp_data.into_inner();
+                    observations.extend_from_slice(&obs);
                 }
                 Err(Error::HttpError(404, _)) => break,
                 Err(e) => return Err(e),
