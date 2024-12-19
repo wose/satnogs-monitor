@@ -38,6 +38,7 @@ impl Client {
             pages_remaining = false;
             let mut filter = filter.clone();
             filter.push(("cursor", &filter_cursor));
+
             match self.client.get_with((), &filter) {
                 Ok(resp) => {
                     let resp_data: Response<ObservationList> = resp; 
@@ -51,7 +52,7 @@ impl Client {
                         let next_link = val.get(&Some("next".to_string()));
                         if next_link.is_some() {
                             let next_url = &next_link.unwrap();
-                            filter_cursor = next_url.queries["cursor"].to_string();
+                            filter_cursor = urlencoding::decode(&next_url.queries["cursor"]).unwrap().to_string();
                             pages_remaining = true;
                         }
                     }
