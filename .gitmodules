@@ -1,0 +1,3 @@
+[submodule "monitor/libgpredict"]
+	path = monitor/libgpredict
+	url = https://github.com/cubehub/libgpredict.git
