@@ -2,13 +2,13 @@ FROM rust:latest
 
 
 RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install -y vim mc git cmake build-essential
+RUN DEBIAN_FRONTEND=noninteractive apt install -y vim mc git cmake build-essential libglib2.0-dev
 
 RUN     git clone https://github.com/cubehub/libgpredict.git
 WORKDIR /libgpredict
 RUN     mkdir build
 WORKDIR /libgpredict/build
-RUN     cmake ../
+RUN     cmake -DBUILD_SHARED_LIBS=ON ../
 RUN     make
 RUN     make install
 RUN     ldconfig
@@ -16,7 +16,7 @@ RUN     ldconfig
 RUN     rustup install stable
 
 WORKDIR /
-RUN     git clone https://github.com/wose/satnogs-monitor.git
+RUN     git clone --recursive https://github.com/wose/satnogs-monitor.git
 WORKDIR /satnogs-monitor/monitor
 RUN     cargo build --release
 
