@@ -15,8 +15,7 @@ RUN     ldconfig
 
 RUN     rustup install stable
 
-WORKDIR /
-RUN     git clone --recursive https://github.com/wose/satnogs-monitor.git
+COPY    . /satnogs-monitor/
 WORKDIR /satnogs-monitor/monitor
 RUN     cargo build --release
 
