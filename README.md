@@ -14,28 +14,6 @@ your station is useful to you and should be included. There is also a
 corresponding forum post at the [SatNOGS community
 forum](https://community.libre.space/t/satnogs-station-monitor/2802)
 
-## TODOs / planned features
-
-Note: the list is by no means complete or in any particular order.
-
-- [X] reduce API queries
-- [X] calculate ground tracks only when a new orbit begins
-- [X] show satellite footprint (can be toggled)
-- [X] polar plot
-- [X] refactor station info, obs info, etc. into separate widgets
-- [ ] detect supported colors and change palette accordingly
-- [X] build debian package for the RPi SatNOGS image
-  - Check [releases](https://github.com/wose/satnogs-monitor/releases)
-- [ ] visual alerts on station failure (failed obs, no heartbeats, ...)
-- [X] rotator state
-- [X] support multiple stations
-- [ ] theme support
-- [ ] network overview
-- [ ] GUI
-- [ ] cross platform
-- [X] waterfall stream of current observation
-- [ ] audio stream of current observation
-
 ## Dependencies
 
 ### Rust
