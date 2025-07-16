@@ -38,21 +38,6 @@ Note: the list is by no means complete or in any particular order.
 
 ## Dependencies
 
-### libgpredict
-
-See [libgpredict](https://github.com/cubehub/libgpredict) for details.
-
-```
-git clone https://github.com/cubehub/libgpredict.git
-cd libgpredict
-mkdir build
-cd build
-cmake ../
-make
-make install
-sudo ldconfig # for linux
-```
-
 ### Rust
 
 Use your distribution package management to install `rust` or `rustup` if
@@ -78,7 +63,7 @@ other terminals with and without Xorg.
 ## Building
 
 ```
-git clone https://github.com/wose/satnogs-monitor.git
+git clone --recursive https://github.com/wose/satnogs-monitor.git
 cd satnogs-monitor/monitor
 mkdir ~/.config/satnogs-monitor
 cp examples/config.toml ~/.config/satnogs-monitor/
