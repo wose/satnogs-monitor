@@ -133,9 +133,11 @@ fn get_sysinfo() -> Result<SysInfo> {
 }
 
 fn settings() -> Result<Settings> {
+    let author = env!("CARGO_PKG_AUTHORS").replace(":", "\n");
+    let version = env!("CARGO_PKG_VERSION");
     let app = App::new("satnogs-monitor")
-        .version(crate_version!())
-        .author(crate_authors!("\n"))
+        .version(version)
+        .author(&*author)
         .about("Monitors the current and future jobs of SatNOGS ground stations.")
         .max_term_width(100)
         .arg(
