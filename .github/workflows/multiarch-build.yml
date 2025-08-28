@@ -1,0 +1,72 @@
+name: Build and Package Release
+
+on:
+  release:
+    types: [created, published]
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        BUILD_TARGET:  # Architectures we build for
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+
+    outputs:
+      release_built: ${{ steps.set-output.outputs.release_built }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cross
+        run: cargo install cross
+
+      - name: Show rustup version
+        run: rustup --version
+
+      - name: Install toolchain "${{ matrix.BUILD_TARGET }}" for cross-compilation
+        run: rustup target add ${{ matrix.BUILD_TARGET }}
+
+      - name: Build satnogs-monitor for "${{ matrix.BUILD_TARGET }}"
+        run: cross build --target ${{ matrix.BUILD_TARGET }} --release
+
+      - name: create artifact directory
+        shell: bash
+        run: |
+          directory=satnogs-monitor-${{ matrix.BUILD_TARGET }}
+          mkdir $directory
+          cp README.md LICENSE $directory
+          cp target/${{ matrix.BUILD_TARGET }}/release/satnogs-monitor $directory
+          tar cJf $directory.tar.xz $directory
+
+      - uses: actions/upload-artifact@v4
+        #if: github.event_name == 'workflow_dispatch'
+        with:
+          name: satnogs-monitor-${{ matrix.BUILD_TARGET }}
+          path: "satnogs-monitor-${{ matrix.BUILD_TARGET }}.*"
+          retention-days: 3
+
+      - uses: ncipollo/release-action@v1.14.0
+        if: github.event_name == 'release'
+        with:
+          artifacts: "satnogs-monitor-${{ matrix.BUILD_TARGET }}.*"
+          allowUpdates: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
