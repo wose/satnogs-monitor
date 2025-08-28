@@ -36,7 +36,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cross
-        run: cargo install cross
+        run: cargo install cross cargo-deb
 
       - name: Show rustup version
         run: rustup --version
@@ -47,7 +47,10 @@ jobs:
       - name: Build satnogs-monitor for "${{ matrix.BUILD_TARGET }}"
         run: cross build --target ${{ matrix.BUILD_TARGET }} --release
 
-      - name: create artifact directory
+      - name: Generate Debian packages
+        run: cargo deb --no-build --target ${{ matrix.BUILD_TARGET }} --no-strip -p satnogs-monitor
+
+      - name: create plain artifact directory
         shell: bash
         run: |
           directory=satnogs-monitor-${{ matrix.BUILD_TARGET }}
@@ -57,16 +60,21 @@ jobs:
           tar cJf $directory.tar.xz $directory
 
       - uses: actions/upload-artifact@v4
-        #if: github.event_name == 'workflow_dispatch'
         with:
           name: satnogs-monitor-${{ matrix.BUILD_TARGET }}
           path: "satnogs-monitor-${{ matrix.BUILD_TARGET }}.*"
           retention-days: 3
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: satnogs-monitor-${{ matrix.BUILD_TARGET }}.deb
+          path: "target/${{ matrix.BUILD_TARGET }}/debian/*.deb"
+          retention-days: 3
+
       - uses: ncipollo/release-action@v1.14.0
         if: github.event_name == 'release'
         with:
-          artifacts: "satnogs-monitor-${{ matrix.BUILD_TARGET }}.*"
+          artifacts: "satnogs-monitor-${{ matrix.BUILD_TARGET }}.*,target/${{ matrix.BUILD_TARGET }}/debian/*.deb"
           allowUpdates: true
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
