@@ -424,6 +424,7 @@ impl Ui {
             self.draw()?;
 
             if self.shutdown {
+                self.terminal.clear()?;
                 break;
             }
         }
