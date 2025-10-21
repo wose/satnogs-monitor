@@ -1,3 +1,4 @@
+use anyhow::bail;
 use anyhow::Context as _;
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
@@ -94,6 +95,12 @@ impl Ui {
         let stdout = MouseTerminal::from(stdout);
         let backend = TermionBackend::new(stdout);
         let mut terminal = Terminal::new(backend).context("failed to create terminal")?;
+
+        // Fail gracefully, when Terminal size is below 115 x 32
+        let size = terminal.size().context("failed to get terminal size")?;
+        if size.width < 115 || size.height < 32 {
+            bail!("Terminal size is under 115 columns or 32 lines");
+        }
 
         terminal.clear().context("failed to clear terminal")?;
         terminal.hide_cursor().context("failed to hide cursor")?;
