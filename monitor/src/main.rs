@@ -221,6 +221,18 @@ fn get_sysinfo() -> Result<SysInfo> {
 fn settings() -> Result<Settings> {
     let cli = Cli::parse();
 
+    // Check floating-point-ranges. ToDo: Once clap::value_parser implements floats, check it there
+    if let Some(value) = cli.db_min {
+        if value < -200.0 || value > 0.0 {
+            bail!("Option db-min out of bound. Must be within -200.0 < db-min < 0.0")
+        }
+    }
+    if let Some(value) = cli.db_max {
+        if value < -200.0 || value > 0.0 {
+            bail!("Option db-max out of bound. Must be within -200.0 < db-max < 0.0")
+        }
+    }
+
     let mut settings = match cli.config {
         Some(path) => Settings::from_file(&path)?,
         None => Settings::new()?,
