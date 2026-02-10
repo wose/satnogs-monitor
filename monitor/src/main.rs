@@ -81,15 +81,11 @@ struct Cli {
     rotctld_interval: Option<u64>,
 
     /// Sets the lower dB bound of the spectrum and waterfall plot
-    #[arg(long="db-min", value_name="DB",
-    // value_parser = clap::value_parser!(f32).range(-200.0..0.0)
-    )]
+    #[arg(long = "db-min", value_name = "DB")]
     db_min: Option<f32>,
 
     /// Sets the upper dB bound of the spectrum and waterfall plot
-    #[arg(long = "db-max", value_name = "DB",
-    // value_parser = clap::value_parser!(f32).range(-200.0..0.0)
-    )]
+    #[arg(long = "db-max", value_name = "DB")]
     db_max: Option<f32>,
 
     /// Enables the spectrum plot
