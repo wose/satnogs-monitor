@@ -4,7 +4,6 @@ version = "0.4.3"
 authors = ["Sebastian Woetzel <wose@zuendmasse.de>"]
 edition = "2018"
 license = "GPL-3.0"
-license-file = "../LICENSE"
 description = "SatNOGS Monitor is a terminal ui to monitor your and/or other ground stations of the SatNOGS network."
 
 [dependencies]

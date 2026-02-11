@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-02-11
+### Changed
+- update dependencies
+- build libgpredict as submodule and link it statically
+
 ## [0.4.2] - 2020-05-08
 ### Added
 - #26 command line parameter `--rotctld-interval` and config option
