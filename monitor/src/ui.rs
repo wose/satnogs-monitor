@@ -194,7 +194,7 @@ impl Ui {
                 let mut rect = render_station_view(&mut f, body[0], &station);
                 rect = render_next_job_view(&mut f, rect, &station);
                 if let Some(job) = station.jobs.iter().next() {
-                    rect = render_polar_plot(&mut f, rect, &job);
+                    rect = render_polar_plot(&mut f, rect, &job, state);
                 }
                 rect = render_satellite_view(&mut f, rect, state, rot_thresholds);
                 rect = render_future_jobs_view(&mut f, rect, &station);
@@ -581,7 +581,7 @@ fn render_map_view<T: Backend>(
         .render(t, rect);
 }
 
-fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rect {
+fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job, state: &State) -> Rect {
     let area = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(rect.width / 2), Constraint::Min(0)].as_ref())
@@ -629,6 +629,22 @@ fn render_polar_plot<T: Backend>(t: &mut Frame<T>, rect: Rect, job: &Job) -> Rec
                 color: Color::Cyan,
             };
             ctx.draw(&points);
+
+            if let Some((azimuth, elevation)) = state.rotator_position {
+                let rotor = azel2xy(&(azimuth, elevation));
+                ctx.print(
+                    rotor.0 + 255.0 / rect.width as f64,
+                    rotor.1,
+                    "<",
+                    Color::Yellow,
+                );
+                ctx.print(
+                    rotor.0 - 250.0 / rect.width as f64,
+                    rotor.1,
+                    ">",
+                    Color::Yellow,
+                );
+            }
 
             if let Some(aos_point) = aos_point {
                 ctx.print(aos_point.0, aos_point.1, DOT, Color::Green);
