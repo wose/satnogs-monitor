@@ -12,7 +12,7 @@ pub struct RotCtldClient {
 impl RotCtldClient {
     pub fn new(address: &str) -> Result<Self> {
         let stream = TcpStream::connect(address)?;
-        stream.set_read_timeout(Some(std::time::Duration::new(1, 0)))?;
+        stream.set_read_timeout(Some(std::time::Duration::new(10, 0)))?;
         let reader = BufReader::new(stream.try_clone()?);
 
         Ok(RotCtldClient {
