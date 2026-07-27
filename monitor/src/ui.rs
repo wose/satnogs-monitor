@@ -785,7 +785,11 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
             Text::styled(
                 format!(
                     "                {:+4}'{:2}\"\n\n",
-                    delta_t.num_minutes(),
+                    if delta_t.num_minutes() == 0 && delta_t < chrono::Duration::zero() {
+                        -0.0
+                    } else {
+                        delta_t.num_minutes() as f64
+                    },
                     (delta_t.num_seconds() % 60).abs()
                 ),
                 time_style,
