@@ -3,4 +3,5 @@
 members = [
     "monitor",
     "satnogs-network-client",
+    "satnogs-db-client",
 ]
