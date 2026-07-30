@@ -1,16 +1,19 @@
 use crate::event::Event;
 use chrono::Utc;
 use log::{debug, error, trace, warn};
+use satnogs_db_client::Satellite;
 use satnogs_network_client::{Job, Observation, ObservationFilter};
 use std::sync::mpsc::{sync_channel, SendError, SyncSender};
 use std::thread;
 
 pub enum Data {
     Jobs(u64, Vec<(Job, Observation)>),
+    Satellite(Satellite),
 }
 
 pub enum Command {
     GetJobs(u64),
+    GetSatellite(String),
 }
 
 pub struct Connection {
@@ -18,10 +21,11 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn new(data_tx: SyncSender<Event>, api_endpoint: String) -> Self {
+    pub fn new(data_tx: SyncSender<Event>, api_endpoint: String, db_api_endpoint: String) -> Self {
         let (command_tx, command_rx) = sync_channel(100);
         thread::spawn(move || {
             let mut client = satnogs_network_client::Client::new(&api_endpoint).unwrap();
+            let mut db_client = satnogs_db_client::Client::new(&db_api_endpoint).unwrap();
 
             while let Ok(command) = command_rx.recv() {
                 match command {
@@ -65,6 +69,19 @@ impl Connection {
                         } else {
                             error!("Failed to get observations for station {}", id);
                         }
+                    }
+                    Command::GetSatellite(id) => {
+                        db_client
+                            .satellite(id)
+                            .and_then(|satellite| {
+                                data_tx
+                                    .send(Event::CommandResponse(Data::Satellite(satellite)))
+                                    .unwrap_or_else(|e| {
+                                        error!("Failed to send Data::Satellite response: {}", e)
+                                    });
+                                Ok(())
+                            })
+                            .unwrap_or_else(|e| error!("Failed to get satellite: {}", e));
                     }
                 }
             }

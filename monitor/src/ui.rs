@@ -3,6 +3,7 @@ use anyhow::Context as _;
 use chrono::prelude::*;
 use circular_queue::CircularQueue;
 use log::{debug, trace};
+use lru::LruCache;
 use satnogs_network_client::{Client, StationStatus};
 use signal_hook::consts::signal::SIGWINCH;
 use signal_hook::iterator::Signals;
@@ -21,8 +22,10 @@ use tui::widgets::{Axis, Chart, Dataset, Marker};
 
 use std::f64::consts;
 use std::io;
+use std::num::NonZeroUsize;
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
 use std::thread;
+use std::time::Instant;
 
 use crate::event::Event;
 use crate::job::Job;
@@ -57,6 +60,7 @@ pub struct Ui {
     waterfall_data: Vec<(i64, Vec<f32>)>,
     waterfall_frequencies: Vec<f32>,
     waterfall_obs_id: u64,
+    satellite_name_cache: LruCache<u64, (Instant, Option<String>)>,
 }
 
 impl Ui {
@@ -109,7 +113,11 @@ impl Ui {
             events: reciever,
             last_job_update: std::time::Instant::now(),
             logs: CircularQueue::with_capacity(100),
-            network: satnogs::Connection::new(sender.clone(), settings.api_endpoint.clone()),
+            network: satnogs::Connection::new(
+                sender.clone(),
+                settings.api_endpoint.clone(),
+                settings.db_api_endpoint.clone(),
+            ),
             sender,
             settings,
             show_logs: false,
@@ -121,6 +129,7 @@ impl Ui {
             waterfall_obs_id: 0,
             waterfall_frequencies: vec![],
             waterfall_data: vec![],
+            satellite_name_cache: LruCache::new(NonZeroUsize::new(10).unwrap()),
         };
 
         Ok(ui)
@@ -168,6 +177,32 @@ impl Ui {
 
         let station = self.state.get_active_station();
 
+        let vessel_name = if let Some(job) = station.jobs.iter().next() {
+            if let Some((time, result)) = self.satellite_name_cache.get(&job.vessel.id) {
+                if let Some(vessel_name) = result {
+                    vessel_name
+                } else {
+                    if time.elapsed().as_secs() >= 10 {
+                        self.network
+                            .send(satnogs::Command::GetSatellite(job.vessel.id.to_string()))
+                            .unwrap();
+                        self.satellite_name_cache
+                            .push(job.vessel.id, (Instant::now(), None));
+                    }
+                    job.vessel_name()
+                }
+            } else {
+                self.network
+                    .send(satnogs::Command::GetSatellite(job.vessel.id.to_string()))
+                    .unwrap();
+                self.satellite_name_cache
+                    .push(job.vessel.id, (Instant::now(), None));
+                job.vessel_name()
+            }
+        } else {
+            "None"
+        };
+
         let logs = &self.logs;
         let show_logs = self.show_logs;
         let ground_tracks = self.settings.ui.ground_track_num as usize;
@@ -192,7 +227,7 @@ impl Ui {
                     .render(&mut f, rows[0]);
 
                 let mut rect = render_station_view(&mut f, body[0], &station);
-                rect = render_next_job_view(&mut f, rect, &station);
+                rect = render_next_job_view(&mut f, rect, &station, &vessel_name);
                 if let Some(job) = station.jobs.iter().next() {
                     rect = render_polar_plot(&mut f, rect, &job, state);
                 }
@@ -284,7 +319,14 @@ impl Ui {
                     };
                 }
 
-                render_map_view(&mut f, rect, &station, ground_tracks, sat_footprint);
+                render_map_view(
+                    &mut f,
+                    rect,
+                    &station,
+                    ground_tracks,
+                    sat_footprint,
+                    &vessel_name,
+                );
 
                 if show_logs {
                     render_log_view(&mut f, log_area, logs);
@@ -330,6 +372,12 @@ impl Ui {
                     self.state.update_jobs(station_id, jobs);
                     self.state
                         .update_vessel_position(self.settings.ui.ground_track_num);
+                }
+                satnogs::Data::Satellite(satellite) => {
+                    self.satellite_name_cache.push(
+                        satellite.norad_cat_id,
+                        (Instant::now(), Some(satellite.name)),
+                    );
                 }
             },
             Event::Resize => debug!("Terminal size changed"),
@@ -535,6 +583,7 @@ fn render_map_view<T: Backend>(
     station: &Station,
     ground_tracks: usize,
     footprint: bool,
+    vessel_name: &str,
 ) {
     Canvas::default()
         .paint(|ctx| {
@@ -549,7 +598,7 @@ fn render_map_view<T: Backend>(
                 ctx.print(
                     job.sat().lon_deg,
                     job.sat().lat_deg,
-                    format!("■─{}", job.vessel_name()),
+                    format!("■─{}", vessel_name),
                     Color::LightRed,
                 );
                 ctx.layer();
@@ -784,7 +833,12 @@ fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stati
     area[1]
 }
 
-fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Station) -> Rect {
+fn render_next_job_view<T: Backend>(
+    t: &mut Frame<T>,
+    rect: Rect,
+    station: &Station,
+    vessel_name: &str,
+) -> Rect {
     let mut jobs_rev = station.jobs.iter();
     let mut job_info = vec![];
 
@@ -817,7 +871,7 @@ fn render_next_job_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Stat
             ),
             Text::styled("Vessel       ", Style::default().fg(Color::Cyan)),
             Text::styled(
-                format!("{:>19}\n", job.vessel_name()),
+                format!("{:>19}\n", vessel_name),
                 Style::default().fg(COL_WHITE),
             ),
             Text::styled("Start        ", Style::default().fg(Color::Cyan)),
