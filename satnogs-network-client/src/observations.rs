@@ -88,7 +88,7 @@ pub struct Observation {
     pub station_lat: f64,
     pub station_lng: f64,
     pub station_alt: f64,
-    pub vetted_status: String,
+    pub status: String,
     pub rise_azimuth: f64,
     pub set_azimuth: f64,
     pub max_altitude: f64,
