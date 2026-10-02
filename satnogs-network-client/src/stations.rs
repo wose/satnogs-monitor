@@ -27,13 +27,6 @@ pub struct Antenna {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum StationStatus {
-    Online,
-    Offline,
-    Testing,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct StationInfo {
     /// station id
     pub id: u64,
@@ -55,8 +48,12 @@ pub struct StationInfo {
     pub created: DateTime<Utc>,
     /// date and time the station was last seen by the network
     pub last_seen: Option<DateTime<Utc>>,
-    /// current station status ["Online", "Offline", "Testing"]
-    pub status: StationStatus,
+    /// station online
+    pub is_connected: bool,
+    /// station available for scheduling
+    pub is_available: bool,
+    /// station in testing mode
+    pub testing: bool,
     /// number of observations
     pub observations: u64,
     /// station description provided by the operator

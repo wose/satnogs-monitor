@@ -1,5 +1,4 @@
 use chrono::prelude::*;
-use satnogs_network_client::StationStatus;
 use tui::{
     buffer::Buffer,
     layout::Rect,
@@ -16,6 +15,7 @@ pub struct InfoBar<'a> {
     style: Style,
     online_style: Style,
     testing_style: Style,
+    unavailable_style: Style,
     offline_style: Style,
     active_style: Style,
 }
@@ -28,6 +28,7 @@ impl<'a> InfoBar<'a> {
             style: Default::default(),
             online_style: Style::default().fg(Color::LightGreen).bg(Color::DarkGray),
             testing_style: Style::default().fg(Color::Yellow).bg(Color::DarkGray),
+            unavailable_style: Style::default().fg(Color::Black).bg(Color::DarkGray),
             offline_style: Style::default().fg(Color::LightRed).bg(Color::DarkGray),
             active_style: Style::default().fg(Color::LightCyan),
         }
@@ -54,10 +55,14 @@ impl<'a> Widget for InfoBar<'a> {
 
         let mut x = area.left();
         for station in self.state.stations.values() {
-            let style = match station.info.status {
-                StationStatus::Online => self.online_style,
-                StationStatus::Testing => self.testing_style,
-                StationStatus::Offline => self.offline_style,
+            let style = if !station.info.is_connected {
+                self.offline_style
+            } else if !station.info.is_available {
+                self.unavailable_style
+            } else if station.info.testing {
+                self.testing_style
+            } else {
+                self.online_style
             };
             buf.set_string(x, area.top(), " ▲ ", style);
 

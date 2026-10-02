@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use circular_queue::CircularQueue;
 use log::{debug, trace};
 use lru::LruCache;
-use satnogs_network_client::{Client, StationStatus};
+use satnogs_network_client::Client;
 use signal_hook::consts::signal::SIGWINCH;
 use signal_hook::iterator::Signals;
 use termion::input::{MouseTerminal, TermRead};
@@ -762,10 +762,14 @@ fn draw_arc(
 fn render_station_view<T: Backend>(t: &mut Frame<T>, rect: Rect, station: &Station) -> Rect {
     let mut lines = 4u16;
 
-    let station_status = match station.info.status {
-        StationStatus::Online => "ONLINE",
-        StationStatus::Offline => "OFFLINE",
-        StationStatus::Testing => "TESTING",
+    let station_status = if !station.info.is_connected {
+        "OFFLINE"
+    } else if !station.info.is_available {
+        "UNAVAILABLE"
+    } else if station.info.testing {
+        "TESTING"
+    } else {
+        "ONLINE"
     };
     let mut station_info = vec![
         Text::styled("Station Status\n\n", Style::default().fg(Color::Yellow)),
